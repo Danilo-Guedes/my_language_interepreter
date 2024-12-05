@@ -75,8 +75,8 @@ impl Display for TokenKind {
     }
 }
 
-pub fn lookup_keywords(identifier : &String) -> TokenKind {
-    match identifier.as_str() {
+pub fn lookup_keywords(identifier: &str) -> TokenKind {
+    match identifier {
         "fn" => TokenKind::Function,
         "let" => TokenKind::Let,
         "true" => TokenKind::True,

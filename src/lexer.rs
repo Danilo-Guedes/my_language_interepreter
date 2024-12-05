@@ -1,6 +1,6 @@
 use crate::token::{lookup_keywords, Token, TokenKind};
 
-struct Lexer {
+pub struct Lexer {
     input: Vec<char>,
     position: usize,
     read_position: usize,
