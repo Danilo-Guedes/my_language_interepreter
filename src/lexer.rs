@@ -34,7 +34,17 @@ impl Lexer {
         self.skip_whitespace();
 
         let token = match self.ch {
-            '=' => Lexer::new_token(TokenKind::Assign, self.ch),
+            '=' => {
+                if self.peek_char() == '=' {
+                    self.read_char();
+                    Token {
+                        kind: TokenKind::EQ,
+                        literal: "==".to_string(),
+                    }
+                } else {
+                    Lexer::new_token(TokenKind::Assign, self.ch)
+                }
+            }
             ';' => Lexer::new_token(TokenKind::Semicolon, self.ch),
             '(' => Lexer::new_token(TokenKind::LParen, self.ch),
             ')' => Lexer::new_token(TokenKind::RParen, self.ch),
@@ -47,7 +57,17 @@ impl Lexer {
                 literal: "".to_string(),
             },
             '-' => Lexer::new_token(TokenKind::Minus, self.ch),
-            '!' => Lexer::new_token(TokenKind::Bang, self.ch),
+            '!' => {
+                if self.peek_char() == '=' {
+                    self.read_char();
+                    Token {
+                        kind: TokenKind::NotEQ,
+                        literal: "!=".to_string(),
+                    }
+                } else {
+                    Lexer::new_token(TokenKind::Bang, self.ch)
+                }
+            }
             '*' => Lexer::new_token(TokenKind::Asterisk, self.ch),
             '/' => Lexer::new_token(TokenKind::Slash, self.ch),
             '<' => Lexer::new_token(TokenKind::LT, self.ch),
@@ -60,12 +80,12 @@ impl Lexer {
                     Token { kind, literal }
                 } else if Lexer::is_digit(self.ch) {
                     let literal = self.read_number();
-                    Token {
+                    return Token {
                         kind: TokenKind::Int,
                         literal,
-                    }
+                    };
                 } else {
-                    Lexer::new_token(TokenKind::Illegal, self.ch)
+                    return Lexer::new_token(TokenKind::Illegal, self.ch);
                 }
             }
         };
@@ -109,6 +129,14 @@ impl Lexer {
             self.read_char();
         }
         number
+    }
+
+    fn peek_char(&self) -> char {
+        if self.read_position >= self.input.len() {
+            '\0'
+        } else {
+            self.input[self.read_position]
+        }
     }
 }
 
@@ -516,7 +544,70 @@ mod test {
                 kind: TokenKind::EOF,
                 literal: "".to_string(),
             },
-           
+        ];
+
+        let mut lexer = Lexer::new(input);
+
+        for (idx, token) in expected.into_iter().enumerate() {
+            let received_token = lexer.next_token();
+            assert_eq!(
+                token.kind, received_token.kind,
+                "tests[{}] - token type wrong. expected={}, got={}",
+                idx, token.kind, received_token.kind
+            );
+
+            assert_eq!(
+                token.literal, received_token.literal,
+                "tests[{}] - literal wrong. expected={}, got={}",
+                idx, token.literal, received_token.literal
+            );
+        }
+    }
+
+    #[test]
+    fn test_next_token_with_equality_signs() {
+        let input: &str = r#"
+            10 == 10;
+            10 != 9;
+            "#;
+
+        let expected: Vec<Token> = vec![
+            Token {
+                kind: TokenKind::Int,
+                literal: "10".to_string(),
+            },
+            Token {
+                kind: TokenKind::EQ,
+                literal: "==".to_string(),
+            },
+            Token {
+                kind: TokenKind::Int,
+                literal: "10".to_string(),
+            },
+            Token {
+                kind: TokenKind::Semicolon,
+                literal: ";".to_string(),
+            },
+            Token {
+                kind: TokenKind::Int,
+                literal: "10".to_string(),
+            },
+            Token {
+                kind: TokenKind::NotEQ,
+                literal: "!=".to_string(),
+            },
+            Token {
+                kind: TokenKind::Int,
+                literal: "9".to_string(),
+            },
+            Token {
+                kind: TokenKind::Semicolon,
+                literal: ";".to_string(),
+            },
+            Token {
+                kind: TokenKind::EOF,
+                literal: "".to_string(),
+            },
         ];
 
         let mut lexer = Lexer::new(input);
