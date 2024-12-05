@@ -74,3 +74,16 @@ impl Display for TokenKind {
         }
     }
 }
+
+pub fn lookup_keywords(identifier : &String) -> TokenKind {
+    match identifier.as_str() {
+        "fn" => TokenKind::Function,
+        "let" => TokenKind::Let,
+        "true" => TokenKind::True,
+        "false" => TokenKind::False,
+        "if" => TokenKind::If,
+        "else" => TokenKind::Else,
+        "return" => TokenKind::Return,
+        _ => TokenKind::Ident,
+    }
+}
