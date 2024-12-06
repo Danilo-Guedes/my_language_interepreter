@@ -4,6 +4,7 @@ use std::io;
 pub mod lexer;
 pub mod repl;
 pub mod token;
+pub mod ast;
 
 fn main() {
     println!("\n\nHello!! This is the GuedzLang interpreter!");
