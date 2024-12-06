@@ -41,8 +41,8 @@ impl Node for ExpressionNode {
     }
 }
 
-struct Program {
-    statements: Vec<StatementNode>,
+pub struct Program {
+    pub statements: Vec<StatementNode>,
 }
 
 impl Node for Program {

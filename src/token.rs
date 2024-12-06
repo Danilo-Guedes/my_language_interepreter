@@ -1,13 +1,14 @@
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::{default, fmt::{Display, Formatter, Result as FmtResult}};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub literal: String,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default, Clone)]
 pub enum TokenKind {
+    #[default]
     Illegal,
     EOF, // END OF FILE
     // Identifiers + literals
