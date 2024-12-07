@@ -1,4 +1,4 @@
-use std::{default, fmt::{Display, Formatter, Result as FmtResult}};
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct Token {

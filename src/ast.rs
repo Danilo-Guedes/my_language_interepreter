@@ -1,11 +1,12 @@
 use crate::token::Token;
 
-trait Node {
+pub trait Node {
     fn token_literal(&self) -> String;
     fn print_string(&self) -> String;
 }
 
-enum StatementNode {
+#[derive(Debug)]
+pub enum StatementNode {
     Let(LetStatement),
 }
 
@@ -23,7 +24,9 @@ impl Node for StatementNode {
     }
 }
 
-enum ExpressionNode {
+#[derive(Debug)]
+
+pub enum ExpressionNode {
     IdentifierNode(Identifier),
 }
 
@@ -64,10 +67,12 @@ impl Node for Program {
     }
 }
 
-struct LetStatement {
-    token: Token,
-    name: Identifier,
-    value: Option<ExpressionNode>,
+#[derive(Debug, Default)]
+
+pub struct LetStatement {
+    pub token: Token,
+    pub name: Identifier,
+    pub value: Option<ExpressionNode>,
 }
 
 impl Node for LetStatement {
@@ -88,9 +93,11 @@ impl Node for LetStatement {
     }
 }
 
-struct Identifier {
-    token: Token,
-    value: String,
+#[derive(Debug, Default)]
+
+pub struct Identifier {
+    pub token: Token,
+    pub value: String,
 }
 
 impl Node for Identifier {
