@@ -1,13 +1,24 @@
 use std::collections::HashMap;
 
 use crate::ast::{
-    ExpressionNode, Identifier, LetStatement, Program, ReturnStatement, StatementNode,
+    ExpressionNode, ExpressionStatement, Identifier, LetStatement, Program, ReturnStatement,
+    StatementNode,
 };
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
 
 type PrefixParseFn = fn(&mut Parser) -> Option<ExpressionNode>;
 type InfixParseFn = fn(&mut Parser, ExpressionNode) -> Option<ExpressionNode>;
+
+enum PrecedenceLevel {
+    Lowest = 0,
+    Equals = 1,      // ==
+    LessGreater = 2, // > or <
+    Sum = 3,         // +
+    Product = 4,
+    Prefix = 5,
+    Call = 6,
+}
 
 pub struct Parser {
     lexer: Lexer,
@@ -28,6 +39,8 @@ impl Parser {
             prefix_parse_fns: HashMap::new(),
             infix_parse_fns: HashMap::new(),
         };
+
+        parser.register_prefix(TokenKind::Ident, Self::parse_identifier);
 
         parser.next_token();
         parser.next_token();
@@ -59,7 +72,7 @@ impl Parser {
         match self.cur_token.kind {
             TokenKind::Let => self.parse_let_statement(),
             TokenKind::Return => self.parse_return_statement(),
-            _ => None,
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -94,10 +107,10 @@ impl Parser {
     fn expect_peek(&mut self, token_kind: TokenKind) -> bool {
         if self.peek_token_is(&token_kind) {
             self.next_token();
-            return true;
+            true
         } else {
             self.peek_error(&token_kind);
-            return false;
+            false
         }
     }
 
@@ -133,7 +146,7 @@ impl Parser {
             self.next_token();
         }
 
-        return Some(StatementNode::Return(stmt));
+        Some(StatementNode::Return(stmt))
     }
 
     fn register_prefix(&mut self, token_kind: TokenKind, func: PrefixParseFn) {
@@ -142,6 +155,40 @@ impl Parser {
 
     fn register_infix(&mut self, token_kind: TokenKind, func: InfixParseFn) {
         self.infix_parse_fns.insert(token_kind, func);
+    }
+
+    fn parse_expression_statement(&mut self) -> Option<StatementNode> {
+        let stmt = ExpressionStatement {
+            token: self.cur_token.clone(),
+            expression: self.parse_expression(PrecedenceLevel::Lowest),
+        };
+        if self.peek_token_is(&TokenKind::Semicolon) {
+            self.next_token();
+        }
+        Some(StatementNode::Expression(stmt))
+    }
+
+    fn parse_expression(&mut self, precedence: PrecedenceLevel) -> Option<ExpressionNode> {
+        let prefix = self.prefix_parse_fns.get(&self.cur_token.kind);
+        if let Some(prefix_fn) = prefix {
+            let mut left_exp = prefix_fn(self);
+            // while !self.peek_token_is(&TokenKind::Semicolon) && precedence < self.peek_precedence() {
+            //     let infix = self.infix_parse_fns.get(&self.peek_token.kind);
+            //     if let Some(infix_fn) = infix {
+            //         self.next_token();
+            //         left_exp = infix_fn(self, left_exp.unwrap());
+            //     }
+            // }
+            return left_exp;
+        };
+        None
+    }
+
+    fn parse_identifier(&mut self) -> Option<ExpressionNode> {
+        Some(ExpressionNode::IdentifierNode(Identifier {
+            token: self.cur_token.clone(),
+            value: self.cur_token.literal.clone(),
+        }))
     }
 }
 
