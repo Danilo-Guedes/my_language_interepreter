@@ -10,6 +10,7 @@ pub enum StatementNode {
     Let(LetStatement),
     Return(ReturnStatement),
     Expression(ExpressionStatement),
+    Prefix(PrefixExpression),
 }
 
 impl Node for StatementNode {
@@ -18,6 +19,7 @@ impl Node for StatementNode {
             Self::Let(let_stmt) => let_stmt.token_literal(),
             Self::Return(return_stmt) => return_stmt.token_literal(),
             Self::Expression(expression_stmt) => expression_stmt.token_literal(),
+            Self::Prefix(prefix_expression) => prefix_expression.token_literal(),
         };
     }
 
@@ -26,6 +28,7 @@ impl Node for StatementNode {
             Self::Let(let_stmt) => let_stmt.print_string(),
             Self::Return(return_stmt) => return_stmt.print_string(),
             Self::Expression(expression_stmt) => expression_stmt.print_string(),
+            Self::Prefix(prefix_expression) => prefix_expression.print_string(),
         };
     }
 }
@@ -64,6 +67,7 @@ impl Node for Program {
                 StatementNode::Let(let_stmt) => let_stmt.token_literal(),
                 StatementNode::Return(return_stmt) => return_stmt.token_literal(),
                 StatementNode::Expression(expression_stmt) => expression_stmt.token_literal(),
+                StatementNode::Prefix(prefix_expression) => prefix_expression.token_literal(),
             }
         } else {
             String::new()
@@ -172,6 +176,27 @@ impl Node for IntegerLiteral {
     }
     fn print_string(&self) -> String {
         return self.token_literal();
+    }
+}
+
+#[derive(Debug)]
+pub struct PrefixExpression {
+    pub token: Token,
+    pub operator: String,
+    pub right: Box<ExpressionNode>,
+}
+
+impl Node for PrefixExpression {
+    fn token_literal(&self) -> String {
+        return self.token.literal.clone();
+    }
+    fn print_string(&self) -> String {
+        let mut out = String::new();
+        out.push_str("(");
+        out.push_str(self.operator.as_str());
+        out.push_str(self.right.print_string().as_str());
+        out.push_str(")");
+        out
     }
 }
 

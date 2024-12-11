@@ -69,42 +69,6 @@ impl Parser {
         return Some(program);
     }
 
-    fn parse_statement(&mut self) -> Option<StatementNode> {
-        match self.cur_token.kind {
-            TokenKind::Let => self.parse_let_statement(),
-            TokenKind::Return => self.parse_return_statement(),
-            _ => self.parse_expression_statement(),
-        }
-    }
-
-    fn parse_let_statement(&mut self) -> Option<StatementNode> {
-        let mut stmt = LetStatement {
-            token: self.cur_token.clone(),
-            name: Default::default(),
-            value: Default::default(),
-        };
-
-        return if !self.expect_peek(TokenKind::Ident) {
-            None
-        } else {
-            stmt.name = Identifier {
-                token: self.cur_token.clone(),
-                value: self.cur_token.literal.clone(),
-            };
-
-            if !self.expect_peek(TokenKind::Assign) {
-                None
-            } else {
-                self.next_token();
-                // TODO: need to implement expression parsing
-                while !self.expect_peek(TokenKind::Semicolon) {
-                    self.next_token();
-                }
-                Some(StatementNode::Let(stmt))
-            }
-        };
-    }
-
     fn expect_peek(&mut self, token_kind: TokenKind) -> bool {
         if self.peek_token_is(&token_kind) {
             self.next_token();
@@ -150,12 +114,41 @@ impl Parser {
         Some(StatementNode::Return(stmt))
     }
 
-    fn register_prefix(&mut self, token_kind: TokenKind, func: PrefixParseFn) {
-        self.prefix_parse_fns.insert(token_kind, func);
+
+    fn parse_statement(&mut self) -> Option<StatementNode> {
+        match self.cur_token.kind {
+            TokenKind::Let => self.parse_let_statement(),
+            TokenKind::Return => self.parse_return_statement(),
+            _ => self.parse_expression_statement(),
+        }
     }
 
-    fn register_infix(&mut self, token_kind: TokenKind, func: InfixParseFn) {
-        self.infix_parse_fns.insert(token_kind, func);
+    fn parse_let_statement(&mut self) -> Option<StatementNode> {
+        let mut stmt = LetStatement {
+            token: self.cur_token.clone(),
+            name: Default::default(),
+            value: Default::default(),
+        };
+
+        return if !self.expect_peek(TokenKind::Ident) {
+            None
+        } else {
+            stmt.name = Identifier {
+                token: self.cur_token.clone(),
+                value: self.cur_token.literal.clone(),
+            };
+
+            if !self.expect_peek(TokenKind::Assign) {
+                None
+            } else {
+                self.next_token();
+                // TODO: need to implement expression parsing
+                while !self.expect_peek(TokenKind::Semicolon) {
+                    self.next_token();
+                }
+                Some(StatementNode::Let(stmt))
+            }
+        };
     }
 
     fn parse_expression_statement(&mut self) -> Option<StatementNode> {
@@ -211,6 +204,15 @@ impl Parser {
                 None
             }
         };
+    }
+
+
+    fn register_prefix(&mut self, token_kind: TokenKind, func: PrefixParseFn) {
+        self.prefix_parse_fns.insert(token_kind, func);
+    }
+
+    fn register_infix(&mut self, token_kind: TokenKind, func: InfixParseFn) {
+        self.infix_parse_fns.insert(token_kind, func);
     }
 }
 
