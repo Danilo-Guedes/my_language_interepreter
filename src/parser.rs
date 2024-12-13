@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::ast::{
-    ExpressionNode, ExpressionStatement, Identifier, IntegerLiteral, LetStatement, Program,
-    ReturnStatement, StatementNode,
+    ExpressionNode, ExpressionStatement, Identifier, IntegerLiteral, LetStatement,
+    PrefixExpression, Program, ReturnStatement, StatementNode,
 };
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
@@ -42,6 +42,9 @@ impl Parser {
 
         parser.register_prefix(TokenKind::Ident, Self::parse_identifier);
         parser.register_prefix(TokenKind::Int, Self::parse_integer_literal);
+        parser.register_prefix(TokenKind::Bang, Self::parse_prefix_expression);
+        parser.register_prefix(TokenKind::Minus, Self::parse_prefix_expression);
+
 
         parser.next_token();
         parser.next_token();
@@ -174,7 +177,13 @@ impl Parser {
             // }
             return left_exp;
         };
+        self.no_prefix_parse_fn_error(self.cur_token.kind.clone());
         None
+    }
+
+    fn no_prefix_parse_fn_error(&mut self, token_kind: TokenKind) {
+        let msg = format!("no prefix parse function for '{}' found", token_kind);
+        self.errors.push(msg);
     }
 
     fn parse_identifier(&mut self) -> Option<ExpressionNode> {
@@ -203,6 +212,24 @@ impl Parser {
                 None
             }
         };
+    }
+
+    fn parse_prefix_expression(&mut self) -> Option<ExpressionNode> {
+        let mut expression = PrefixExpression {
+            token: self.cur_token.clone(),
+            operator: self.cur_token.literal.clone(),
+            right: Default::default(),
+        };
+
+        self.next_token();
+
+        match self.parse_expression(PrecedenceLevel::Prefix) {
+            Some(right) => {
+                expression.right = Box::new(right);
+                Some(ExpressionNode::Prefix(expression))
+            }
+            None => None,
+        }
     }
 
     fn register_prefix(&mut self, token_kind: TokenKind, func: PrefixParseFn) {
@@ -321,7 +348,6 @@ mod tests {
             }
         };
     }
-
 
     #[test]
     fn test_identifier_expression() {
@@ -461,22 +487,24 @@ mod tests {
                     assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
 
                     match exp_stmt.expression.as_ref().unwrap() {
-                        ExpressionNode::Prefix(prefix_exp
-                        ) => {
+                        ExpressionNode::Prefix(prefix_exp) => {
                             assert_eq!(
-                                prefix_exp
-                                .token_literal(), test.1,
+                                prefix_exp.token_literal(),
+                                test.1,
                                 "prefix_exp
                                 .token_literal() is not '{}'. got={}",
-                                test.1, prefix_exp
-                                .token_literal()
+                                test.1,
+                                prefix_exp.token_literal()
                             );
 
                             test_integer_literal(&prefix_exp.right, test.2);
                         }
                         other => {
-                            panic!("prefix_exp
-                             not Prefix. got={:?}", other);
+                            panic!(
+                                "prefix_exp
+                             not Prefix. got={:?}",
+                                other
+                            );
                         }
                     }
                 }
