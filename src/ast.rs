@@ -10,7 +10,6 @@ pub enum StatementNode {
     Let(LetStatement),
     Return(ReturnStatement),
     Expression(ExpressionStatement),
-    Prefix(PrefixExpression),
 }
 
 impl Node for StatementNode {
@@ -19,7 +18,6 @@ impl Node for StatementNode {
             Self::Let(let_stmt) => let_stmt.token_literal(),
             Self::Return(return_stmt) => return_stmt.token_literal(),
             Self::Expression(expression_stmt) => expression_stmt.token_literal(),
-            Self::Prefix(prefix_expression) => prefix_expression.token_literal(),
         };
     }
 
@@ -28,7 +26,6 @@ impl Node for StatementNode {
             Self::Let(let_stmt) => let_stmt.print_string(),
             Self::Return(return_stmt) => return_stmt.print_string(),
             Self::Expression(expression_stmt) => expression_stmt.print_string(),
-            Self::Prefix(prefix_expression) => prefix_expression.print_string(),
         };
     }
 }
@@ -38,6 +35,7 @@ impl Node for StatementNode {
 pub enum ExpressionNode {
     IdentifierNode(Identifier),
     Integer(IntegerLiteral),
+    Prefix(PrefixExpression),
 }
 
 impl Node for ExpressionNode {
@@ -45,6 +43,7 @@ impl Node for ExpressionNode {
         return match self {
             Self::IdentifierNode(identifirer) => identifirer.token_literal(),
             Self::Integer(integer) => integer.token_literal(),
+            Self::Prefix(prefix_expression) => prefix_expression.token_literal(),
         };
     }
 
@@ -52,6 +51,7 @@ impl Node for ExpressionNode {
         return match self {
             Self::IdentifierNode(identifier) => identifier.print_string(),
             Self::Integer(integer) => integer.print_string(),
+            Self::Prefix(prefix_expression) => prefix_expression.print_string(),
         };
     }
 }
@@ -67,7 +67,6 @@ impl Node for Program {
                 StatementNode::Let(let_stmt) => let_stmt.token_literal(),
                 StatementNode::Return(return_stmt) => return_stmt.token_literal(),
                 StatementNode::Expression(expression_stmt) => expression_stmt.token_literal(),
-                StatementNode::Prefix(prefix_expression) => prefix_expression.token_literal(),
             }
         } else {
             String::new()

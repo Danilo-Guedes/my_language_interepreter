@@ -54,7 +54,7 @@ impl Parser {
         self.peek_token = self.lexer.next_token();
     }
 
-    fn parse_program(&mut self) -> Option<Program> {
+    pub fn parse_program(&mut self) -> Option<Program> {
         let mut program = Program {
             statements: Vec::new(),
         };
@@ -113,7 +113,6 @@ impl Parser {
 
         Some(StatementNode::Return(stmt))
     }
-
 
     fn parse_statement(&mut self) -> Option<StatementNode> {
         match self.cur_token.kind {
@@ -205,7 +204,6 @@ impl Parser {
             }
         };
     }
-
 
     fn register_prefix(&mut self, token_kind: TokenKind, func: PrefixParseFn) {
         self.prefix_parse_fns.insert(token_kind, func);
@@ -324,18 +322,6 @@ mod tests {
         };
     }
 
-    fn check_parser_errors(parser: &Parser) {
-        let errors = parser.errors();
-        if errors.len() == 0 {
-            return;
-        }
-
-        eprintln!("parser has {} errors", errors.len());
-        for error in errors {
-            eprintln!("parser error: {}", error);
-        }
-        panic!("parser errors found");
-    }
 
     #[test]
     fn test_identifier_expression() {
@@ -449,5 +435,92 @@ mod tests {
                 panic!("parse_program() returned None")
             }
         };
+    }
+
+    #[test]
+    fn test_parsing_prefix_expressions() {
+        let prefix_tests = vec![("!5", "!", 5), ("-15", "-", 15)];
+
+        for test in prefix_tests {
+            let lexer = Lexer::new(test.0);
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program().unwrap();
+
+            check_parser_errors(&parser);
+
+            assert_eq!(
+                program.statements.len(),
+                1,
+                "program.statements does not contain 1 statements. got={}",
+                program.statements.len()
+            );
+
+            match &program.statements[0] {
+                StatementNode::Expression(exp_stmt) => {
+                    assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                    match exp_stmt.expression.as_ref().unwrap() {
+                        ExpressionNode::Prefix(prefix_exp
+                        ) => {
+                            assert_eq!(
+                                prefix_exp
+                                .token_literal(), test.1,
+                                "prefix_exp
+                                .token_literal() is not '{}'. got={}",
+                                test.1, prefix_exp
+                                .token_literal()
+                            );
+
+                            test_integer_literal(&prefix_exp.right, test.2);
+                        }
+                        other => {
+                            panic!("prefix_exp
+                             not Prefix. got={:?}", other);
+                        }
+                    }
+                }
+
+                other => {
+                    panic!("stmt not ExpressionStatement. got={:?}", other);
+                }
+            }
+        }
+    }
+
+    pub fn check_parser_errors(parser: &Parser) {
+        let errors = parser.errors();
+        if errors.len() == 0 {
+            return;
+        }
+
+        eprintln!("parser has {} errors", errors.len());
+        for error in errors {
+            eprintln!("parser error: {}", error);
+        }
+        panic!("parser errors found");
+    }
+
+    fn test_integer_literal(exp: &ExpressionNode, value: i64) {
+        match exp {
+            ExpressionNode::Integer(integer) => {
+                assert_eq!(
+                    integer.value, value,
+                    "integer.value not {}. got={}",
+                    value, integer.value
+                );
+
+                assert_eq!(
+                    integer.token_literal(),
+                    value.to_string(),
+                    "integer.token_literal() not '{}'. got={}",
+                    value,
+                    integer.token_literal()
+                );
+            }
+            other => {
+                panic!("exp not IntegerLiteral. got={:?}", other);
+            }
+        }
     }
 }
