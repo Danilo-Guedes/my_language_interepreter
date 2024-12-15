@@ -45,7 +45,6 @@ impl Parser {
         parser.register_prefix(TokenKind::Bang, Self::parse_prefix_expression);
         parser.register_prefix(TokenKind::Minus, Self::parse_prefix_expression);
 
-
         parser.next_token();
         parser.next_token();
 
@@ -548,6 +547,70 @@ mod tests {
             }
             other => {
                 panic!("exp not IntegerLiteral. got={:?}", other);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parsing_infix_expressions() {
+        let infix_tests = vec![
+            ("5 + 5;", 5, "+", 5),
+            ("5 - 5;", 5, "+", 5),
+            ("5 * 5;", 5, "*", 5),
+            ("5 / 5;", 5, "/", 5),
+            ("5 > 5;", 5, ">", 5),
+            ("5 < 5;", 5, "<", 5),
+            ("5 == 5;", 5, "==", 5),
+            ("5 != 5;", 5, "!=", 5),
+        ];
+
+        for test in infix_tests {
+            let lexer = Lexer::new(test.0);
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program().unwrap();
+
+            check_parser_errors(&parser);
+
+            assert_eq!(
+                program.statements.len(),
+                1,
+                "program.statements does not contain 1 statements. got={}",
+                program.statements.len()
+            );
+
+            match &program.statements[0] {
+                StatementNode::Expression(exp_stmt) => {
+                    assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                    match exp_stmt.expression.as_ref().unwrap() {
+                        ExpressionNode::Infix(infix_exp) => {
+                            test_integer_literal(&infix_exp.left, test.1);
+
+                            assert_eq!(
+                                infix_exp.token_literal(),
+                                test.2,
+                                "infix_exp
+                                .token_literal() is not '{}'. got={}",
+                                test.3,
+                                infix_exp.token_literal()
+                            );
+
+                            test_integer_literal(&infix_exp.right, test.3);
+                        }
+                        other => {
+                            panic!(
+                                "prefix_exp
+                             not Prefix. got={:?}",
+                                other
+                            );
+                        }
+                    }
+                }
+
+                other => {
+                    panic!("stmt not ExpressionStatement. got={:?}", other);
+                }
             }
         }
     }
