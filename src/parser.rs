@@ -299,6 +299,7 @@ mod tests {
     use super::Parser;
     use crate::ast::{ExpressionNode, Node, StatementNode};
     use crate::lexer::Lexer;
+    use crate::token::TokenKind;
 
     #[test]
     fn test_let_statements() {
@@ -639,8 +640,12 @@ mod tests {
 
                     let expression = exp_stmt.expression.as_ref().unwrap();
 
-                    test_infix_expression(&expression, Box::new(test.1), test.2.to_string(), Box::new(test.3));
-
+                    test_infix_expression(
+                        &expression,
+                        Box::new(test.1),
+                        test.2.to_string(),
+                        Box::new(test.3),
+                    );
                 }
 
                 other => {
@@ -680,6 +685,65 @@ mod tests {
 
             let actual = program.print_string();
             assert_eq!(actual, test.1, "expected={}, got={}", test.1, actual);
+        }
+    }
+
+    #[test]
+    fn test_boolean_expression() {
+        let input = r#"
+        true;
+        false;
+        "#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements.len(),
+            2,
+            "program.statements does not contain 2 statements. got={}",
+            program.statements.len()
+        );
+
+        let expected_values = vec![(TokenKind::True, "true"), (TokenKind::False, "false")];
+
+        for (index, test) in expected_values.into_iter().enumerate() {
+            match &program.statements[index] {
+                StatementNode::Expression(exp_stmt) => {
+                    assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                    match exp_stmt.expression.as_ref().unwrap() {
+                        ExpressionNode::BooleanNode(boolean) => {
+                            assert_eq!(
+                                boolean.token.kind,
+                                test.0,
+                                "boolean.kind not {}. got={}",
+                                TokenKind::True,
+                                boolean.token.kind
+                            );
+
+                            assert_eq!(
+                                boolean.token_literal(),
+                                test.1,
+                                "boolean.token_literal() not '{}'. got={}",
+                                test.1,
+                                boolean.token_literal()
+                            );
+                        }
+                        other => {
+                            panic!("exp not Boolean. got={:?}", other);
+                        }
+                    }
+                }
+
+                other => {
+                    panic!("stmt not ExpressionStatement. got={:?}", other);
+                }
+            }
         }
     }
 
