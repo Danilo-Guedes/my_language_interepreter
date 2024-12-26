@@ -787,6 +787,164 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_if_expression() {
+        let input = r#"
+        if (x < y) { x }
+        "#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "program.statements does not contain 1 statements. got={}",
+            program.statements.len()
+        );
+
+        match &program.statements[0] {
+            StatementNode::Expression(exp_stmt) => {
+                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                match exp_stmt.expression.as_ref().unwrap() {
+                    ExpressionNode::IfExpressionNode(if_exp) => {
+                        test_infix_expression(
+                            &if_exp.condition,
+                            Box::new("x"),
+                            String::from("<"),
+                            Box::new("y"),
+                        );
+
+                        assert_eq!(
+                            if_exp.consequence.statements.len(),
+                            1,
+                            "consequence is not 1 statements. got={}",
+                            if_exp.consequence.statements.len()
+                        );
+
+                        match &if_exp.consequence.statements[0] {
+                            StatementNode::Expression(consequence) => {
+                                test_identifier(
+                                    consequence
+                                        .expression
+                                        .as_ref()
+                                        .expect("Error parsing consequence"),
+                                    "x".to_string(),
+                                );
+                            }
+                            other => {
+                                panic!("stmt not ExpressionStatement. got={:?}", other);
+                            }
+                        }
+
+                        assert!(if_exp.alternative.is_none(), "alternative is not None");
+                    }
+                    other => {
+                        panic!("exp not IfExpression. got={:?}", other);
+                    }
+                }
+            }
+
+            other => {
+                panic!("stmt not ExpressionStatement. got={:?}", other);
+            }
+        }
+    }
+    #[test]
+    fn test_if_else_expression() {
+        let input = r#"
+        if (x < y) { x } else { y }
+        "#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "program.statements does not contain 1 statements. got={}",
+            program.statements.len()
+        );
+
+        match &program.statements[0] {
+            StatementNode::Expression(exp_stmt) => {
+                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                match exp_stmt.expression.as_ref().unwrap() {
+                    ExpressionNode::IfExpressionNode(if_exp) => {
+                        test_infix_expression(
+                            &if_exp.condition,
+                            Box::new("x"),
+                            String::from("<"),
+                            Box::new("y"),
+                        );
+
+                        assert_eq!(
+                            if_exp.consequence.statements.len(),
+                            1,
+                            "consequence is not 1 statements. got={}",
+                            if_exp.consequence.statements.len()
+                        );
+
+                        assert_eq!(
+                            if_exp.alternative.as_ref().unwrap().statements.len(),
+                            1,
+                            "alternative is not 1 statements. got={}",
+                            if_exp.alternative.as_ref().unwrap().statements.len()
+                        );
+
+                        match &if_exp.consequence.statements[0] {
+                            StatementNode::Expression(consequence) => {
+                                test_identifier(
+                                    consequence
+                                        .expression
+                                        .as_ref()
+                                        .expect("Error parsing consequence"),
+                                    "x".to_string(),
+                                );
+                            }
+                            other => {
+                                panic!("stmt not ExpressionStatement. got={:?}", other);
+                            }
+                        }
+
+                        match &if_exp.alternative.as_ref().unwrap().statements[0] {
+                            StatementNode::Expression(alternative) => {
+                                test_identifier(
+                                    alternative
+                                        .expression
+                                        .as_ref()
+                                        .expect("Error parsing alternative"),
+                                    "y".to_string(),
+                                );
+                            }
+                            other => {
+                                panic!("stmt not ExpressionStatement. got={:?}", other);
+                            }
+                        }
+
+                    }
+                    other => {
+                        panic!("exp not IfExpression. got={:?}", other);
+                    }
+                }
+            }
+
+            other => {
+                panic!("stmt not ExpressionStatement. got={:?}", other);
+            }
+        }
+    }
+
     fn test_identifier(exp: &ExpressionNode, value: String) {
         match exp {
             ExpressionNode::IdentifierNode(identifier_exp) => {
