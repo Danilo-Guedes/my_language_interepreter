@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::ast::{
-    ExpressionNode, ExpressionStatement, Identifier, InfixExpression, IntegerLiteral, LetStatement,
-    PrefixExpression, Program, ReturnStatement, StatementNode,
+    Boolean, ExpressionNode, ExpressionStatement, Identifier, InfixExpression, IntegerLiteral,
+    LetStatement, PrefixExpression, Program, ReturnStatement, StatementNode,
 };
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
@@ -55,6 +55,9 @@ impl Parser {
         parser.register_prefix(TokenKind::Int, Self::parse_integer_literal);
         parser.register_prefix(TokenKind::Bang, Self::parse_prefix_expression);
         parser.register_prefix(TokenKind::Minus, Self::parse_prefix_expression);
+        parser.register_prefix(TokenKind::True, Self::parse_boolean);
+        parser.register_prefix(TokenKind::False, Self::parse_boolean);
+
         parser.register_infix(TokenKind::Plus, Self::parse_infix_expression);
         parser.register_infix(TokenKind::Minus, Self::parse_infix_expression);
         parser.register_infix(TokenKind::Slash, Self::parse_infix_expression);
@@ -290,6 +293,13 @@ impl Parser {
     fn cur_precedence(&self) -> PrecedenceLevel {
         precedence_map(&self.cur_token.kind)
     }
+
+    fn parse_boolean(&mut self) -> Option<ExpressionNode> {
+        Some(ExpressionNode::BooleanNode(Boolean {
+            token: self.cur_token.clone(),
+            value: self.cur_token_is(TokenKind::True),
+        }))
+    }
 }
 
 #[cfg(test)]
@@ -519,7 +529,12 @@ mod tests {
 
     #[test]
     fn test_parsing_prefix_expressions() {
-        let prefix_tests = vec![("!5", "!", 5), ("-15", "-", 15)];
+        let prefix_tests: Vec<(&str, &str, Box<dyn any::Any>)> = vec![
+            ("!5", "!", Box::new(5)),
+            ("-15", "-", Box::new(15)),
+            ("!true", "!", Box::new(true)),
+            ("!false", "!", Box::new(false)),
+        ];
 
         for test in prefix_tests {
             let lexer = Lexer::new(test.0);
@@ -551,7 +566,7 @@ mod tests {
                                 prefix_exp.token_literal()
                             );
 
-                            test_integer_literal(&prefix_exp.right, test.2);
+                            test_literal_expression(&prefix_exp.right, test.2);
                         }
                         other => {
                             panic!(
@@ -608,15 +623,18 @@ mod tests {
 
     #[test]
     fn test_parsing_infix_expressions() {
-        let infix_tests: Vec<(&str, i64, &str, i64)> = vec![
-            ("5 + 5;", 5, "+", 5),
-            ("5 - 5;", 5, "-", 5),
-            ("5 * 5;", 5, "*", 5),
-            ("5 / 5;", 5, "/", 5),
-            ("5 > 5;", 5, ">", 5),
-            ("5 < 5;", 5, "<", 5),
-            ("5 == 5;", 5, "==", 5),
-            ("5 != 5;", 5, "!=", 5),
+        let infix_tests: Vec<(&str, Box<dyn any::Any>, &str, Box<dyn any::Any>)> = vec![
+            ("5 + 5;", Box::new(5), "+", Box::new(5)),
+            ("5 - 5;", Box::new(5), "-", Box::new(5)),
+            ("5 * 5;", Box::new(5), "*", Box::new(5)),
+            ("5 / 5;", Box::new(5), "/", Box::new(5)),
+            ("5 > 5;", Box::new(5), ">", Box::new(5)),
+            ("5 < 5;", Box::new(5), "<", Box::new(5)),
+            ("5 == 5;", Box::new(5), "==", Box::new(5)),
+            ("5 != 5;", Box::new(5), "!=", Box::new(5)),
+            ("true == true", Box::new(true), "==", Box::new(true)),
+            ("true != false", Box::new(true), "!=", Box::new(false)),
+            ("false == false", Box::new(false), "==", Box::new(false)),
         ];
 
         for test in infix_tests {
@@ -673,6 +691,10 @@ mod tests {
                 "3 + 4 * 5 == 3 * 1 + 4 * 5",
                 "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
             ),
+            ("true", "true"),
+            ("false", "false"),
+            ("3 > 5 == false", "((3 > 5) == false)"),
+            ("3 < 5 == true", "((3 < 5) == true)"),
         ];
 
         for test in tests {
@@ -777,9 +799,10 @@ mod tests {
                 Some(int_exp) => {
                     test_integer_literal(exp, *int_exp);
                 }
-                None => {
-                    panic!("type of exp not handled. got={:?}", expected);
-                }
+                None => match expected.downcast_ref::<bool>() {
+                    Some(bool) => test_boolean_literal(exp, bool.to_owned()),
+                    None => (),
+                },
             },
         }
     }
@@ -802,6 +825,29 @@ mod tests {
             }
             other => {
                 panic!("exp not Infix. got={:?}", other);
+            }
+        }
+    }
+
+    fn test_boolean_literal(exp: &ExpressionNode, value: bool) {
+        match exp {
+            ExpressionNode::BooleanNode(bool_exp) => {
+                assert_eq!(
+                    bool_exp.value, value,
+                    "boolean.value not {}. got={}",
+                    value, bool_exp.value
+                );
+
+                assert_eq!(
+                    bool_exp.token_literal(),
+                    value.to_string(),
+                    "boolean.token_literal() not '{}'. got={}",
+                    value,
+                    bool_exp.token_literal()
+                );
+            }
+            other => {
+                panic!("exp not Boolean. got={:?}", other);
             }
         }
     }
