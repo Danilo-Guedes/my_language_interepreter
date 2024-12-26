@@ -10,6 +10,7 @@ pub enum StatementNode {
     Let(LetStatement),
     Return(ReturnStatement),
     Expression(ExpressionStatement),
+    Block(BlockStatement),
 }
 
 impl Node for StatementNode {
@@ -18,6 +19,7 @@ impl Node for StatementNode {
             Self::Let(let_stmt) => let_stmt.token_literal(),
             Self::Return(return_stmt) => return_stmt.token_literal(),
             Self::Expression(expression_stmt) => expression_stmt.token_literal(),
+            Self::Block(block_stmt) => block_stmt.token_literal(),
         };
     }
 
@@ -26,6 +28,7 @@ impl Node for StatementNode {
             Self::Let(let_stmt) => let_stmt.print_string(),
             Self::Return(return_stmt) => return_stmt.print_string(),
             Self::Expression(expression_stmt) => expression_stmt.print_string(),
+            Self::Block(block_stmt) => block_stmt.print_string(),
         };
     }
 }
@@ -40,6 +43,7 @@ pub enum ExpressionNode {
     Prefix(PrefixExpression),
     Infix(InfixExpression),
     BooleanNode(Boolean),
+    IfExpressionNode(IfExpression)
 }
 
 impl Node for ExpressionNode {
@@ -51,6 +55,7 @@ impl Node for ExpressionNode {
             Self::Prefix(prefix_expression) => prefix_expression.token_literal(),
             Self::Infix(infix_expression) => infix_expression.token_literal(),
             Self::BooleanNode(boolean) => boolean.token_literal(),
+            Self::IfExpressionNode(if_expression) => if_expression.token_literal(),
         };
     }
 
@@ -62,6 +67,7 @@ impl Node for ExpressionNode {
             Self::Prefix(prefix_expression) => prefix_expression.print_string(),
             Self::Infix(infix_expression) => infix_expression.print_string(),
             Self::BooleanNode(boolean) => boolean.print_string(),
+            Self::IfExpressionNode(if_expression) => if_expression.print_string(),
         };
     }
 }
@@ -77,6 +83,7 @@ impl Node for Program {
                 StatementNode::Let(let_stmt) => let_stmt.token_literal(),
                 StatementNode::Return(return_stmt) => return_stmt.token_literal(),
                 StatementNode::Expression(expression_stmt) => expression_stmt.token_literal(),
+                StatementNode::Block(block_stmt) => block_stmt.token_literal(),
             }
         } else {
             String::new()
@@ -246,7 +253,50 @@ impl Node for Boolean {
         return self.token_literal();
     }
 }
+#[derive(Debug, Default)]
+pub struct IfExpression {
+    pub token: Token,
+    pub condition: Box<ExpressionNode>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
+}
 
+impl Node for IfExpression {
+    fn token_literal(&self) -> String {
+        return self.token.literal.clone();
+    }
+    fn print_string(&self) -> String {
+        let mut out = String::new();
+        out.push_str("if");
+        out.push_str(self.condition.print_string().as_str());
+        out.push_str(" ");
+        out.push_str(self.consequence.print_string().as_str());
+        if let Some(alt) = &self.alternative {
+            out.push_str("else ");
+            out.push_str(alt.print_string().as_str());
+        }
+        out
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct BlockStatement {
+    pub token: Token,
+    pub statements: Vec<StatementNode>,
+}
+
+impl Node for BlockStatement {
+    fn token_literal(&self) -> String {
+        return self.token.literal.clone();
+    }
+    fn print_string(&self) -> String {
+        let mut out = String::new();
+        for statement in &self.statements {
+            out.push_str(statement.print_string().as_str());
+        }
+        out
+    }
+}
 #[cfg(test)]
 mod test {
     use super::{ExpressionNode, Identifier, LetStatement, Node, Program, StatementNode};
