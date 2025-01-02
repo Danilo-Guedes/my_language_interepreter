@@ -43,7 +43,8 @@ pub enum ExpressionNode {
     Prefix(PrefixExpression),
     Infix(InfixExpression),
     BooleanNode(Boolean),
-    IfExpressionNode(IfExpression)
+    IfExpressionNode(IfExpression),
+    Function(FunctionLiteral)
 }
 
 impl Node for ExpressionNode {
@@ -56,6 +57,7 @@ impl Node for ExpressionNode {
             Self::Infix(infix_expression) => infix_expression.token_literal(),
             Self::BooleanNode(boolean) => boolean.token_literal(),
             Self::IfExpressionNode(if_expression) => if_expression.token_literal(),
+            Self::Function(function) => function.token_literal()
         };
     }
 
@@ -68,6 +70,7 @@ impl Node for ExpressionNode {
             Self::Infix(infix_expression) => infix_expression.print_string(),
             Self::BooleanNode(boolean) => boolean.print_string(),
             Self::IfExpressionNode(if_expression) => if_expression.print_string(),
+            Self::Function(function) => function.print_string()
         };
     }
 }
@@ -294,6 +297,33 @@ impl Node for BlockStatement {
         for statement in &self.statements {
             out.push_str(statement.print_string().as_str());
         }
+        out
+    }
+}
+
+#[derive(Debug)]
+pub struct FunctionLiteral {
+    pub token: Token,
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
+}
+
+impl Node for FunctionLiteral {
+    fn token_literal(&self) -> String {
+        return self.token.literal.clone();
+    }
+    fn print_string(&self) -> String {
+        let mut out = String::new();
+        out.push_str(self.token_literal().as_str());
+        out.push_str("(");
+        for (i, param) in self.parameters.iter().enumerate() {
+            out.push_str(param.print_string().as_str());
+            if i != self.parameters.len() - 1 {
+                out.push_str(", ");
+            }
+        }
+        out.push_str(") ");
+        out.push_str(self.body.print_string().as_str());
         out
     }
 }
