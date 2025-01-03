@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::ast::{
-    BlockStatement, Boolean, ExpressionNode, ExpressionStatement, FunctionLiteral, Identifier,
-    IfExpression, InfixExpression, IntegerLiteral, LetStatement, PrefixExpression, Program,
-    ReturnStatement, StatementNode,
+    BlockStatement, Boolean, CallExpression, ExpressionNode, ExpressionStatement, FunctionLiteral,
+    Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement, PrefixExpression,
+    Program, ReturnStatement, StatementNode,
 };
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
@@ -72,6 +72,7 @@ impl Parser {
         parser.register_infix(TokenKind::NotEQ, Self::parse_infix_expression);
         parser.register_infix(TokenKind::LT, Self::parse_infix_expression);
         parser.register_infix(TokenKind::GT, Self::parse_infix_expression);
+        parser.register_infix(TokenKind::LParen, Self::parse_call_expression);
 
         parser.next_token();
         parser.next_token();
@@ -434,6 +435,52 @@ impl Parser {
         }
 
         Some(identifiers)
+    }
+
+    fn parse_call_expression(&mut self, function: ExpressionNode) -> Option<ExpressionNode> {
+        self.next_token();
+        let mut exp = CallExpression {
+            token: self.cur_token.clone(),
+            function: Box::new(function),
+            arguments: vec![],
+        };
+
+        exp.arguments = self
+            .parse_call_arguments()
+            .expect("error parsing arguments");
+
+        Some(ExpressionNode::Call(exp))
+    }
+
+    fn parse_call_arguments(&mut self) -> Option<Vec<ExpressionNode>> {
+        let mut args = vec![];
+
+        if self.peek_token_is(&TokenKind::RParen) {
+            self.next_token();
+            return Some(args);
+        }
+
+        self.next_token();
+
+        args.push(
+            self.parse_expression(PrecedenceLevel::Lowest)
+                .expect("error parsing arguments"),
+        );
+
+        while self.peek_token_is(&TokenKind::Comma) {
+            self.next_token();
+            self.next_token();
+            args.push(
+                self.parse_expression(PrecedenceLevel::Lowest)
+                    .expect("error parsing arguments"),
+            );
+        }
+
+        if !self.expect_peek(TokenKind::RParen) {
+            return None;
+        }
+
+        Some(args)
     }
 }
 
@@ -799,6 +846,15 @@ mod tests {
             ("2 / (5 + 5)", "(2 / (5 + 5))"),
             ("-(5 + 5)", "(-(5 + 5))"),
             ("!(true == true)", "(!(true == true))"),
+            ("a + add(b * c) + d", "((a + add((b * c))) + d)"),
+            (
+                "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+                "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+            ),
+            (
+                "add(a + b + c * d / f + g)",
+                "add((((a + b) + ((c * d) / f)) + g))",
+            )
         ];
 
         for test in tests {
