@@ -44,7 +44,8 @@ pub enum ExpressionNode {
     Infix(InfixExpression),
     BooleanNode(Boolean),
     IfExpressionNode(IfExpression),
-    Function(FunctionLiteral)
+    Function(FunctionLiteral),
+    Call(CallExpression),
 }
 
 impl Node for ExpressionNode {
@@ -57,7 +58,8 @@ impl Node for ExpressionNode {
             Self::Infix(infix_expression) => infix_expression.token_literal(),
             Self::BooleanNode(boolean) => boolean.token_literal(),
             Self::IfExpressionNode(if_expression) => if_expression.token_literal(),
-            Self::Function(function) => function.token_literal()
+            Self::Function(function) => function.token_literal(),
+            Self::Call(call_expression) => call_expression.token_literal(),
         };
     }
 
@@ -70,7 +72,8 @@ impl Node for ExpressionNode {
             Self::Infix(infix_expression) => infix_expression.print_string(),
             Self::BooleanNode(boolean) => boolean.print_string(),
             Self::IfExpressionNode(if_expression) => if_expression.print_string(),
-            Self::Function(function) => function.print_string()
+            Self::Function(function) => function.print_string(),
+            Self::Call(call_expression) => call_expression.print_string(),
         };
     }
 }
@@ -327,6 +330,33 @@ impl Node for FunctionLiteral {
         out
     }
 }
+
+#[derive(Debug, Default)]
+pub struct CallExpression {
+    pub token: Token,
+    pub function: Box<ExpressionNode>,
+    pub arguments: Vec<ExpressionNode>,
+}
+
+impl Node for CallExpression {
+    fn token_literal(&self) -> String {
+        return self.token.literal.clone();
+    }
+    fn print_string(&self) -> String {
+        let mut out = String::new();
+        out.push_str(self.function.print_string().as_str());
+        out.push_str("(");
+        for (i, arg) in self.arguments.iter().enumerate() {
+            out.push_str(arg.print_string().as_str());
+            if i != self.arguments.len() - 1 {
+                out.push_str(", ");
+            }
+        }
+        out.push_str(")");
+        out
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{ExpressionNode, Identifier, LetStatement, Node, Program, StatementNode};
