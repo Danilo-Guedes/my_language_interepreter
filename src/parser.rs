@@ -1187,6 +1187,65 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_call_expression_parsing() {
+        let input = "add(1, 2 * 3, 4 + 5);";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "program.statements does not contain 1 statements. got={}",
+            program.statements.len()
+        );
+
+        match &program.statements[0] {
+            StatementNode::Expression(exp_stmt) => {
+                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                match exp_stmt.expression.as_ref().unwrap() {
+                    ExpressionNode::Call(call_exp) => {
+                        test_identifier(&call_exp.function, "add".to_string());
+
+                        assert_eq!(
+                            call_exp.arguments.len(),
+                            3,
+                            "wrong length of arguments. got={}",
+                            call_exp.arguments.len()
+                        );
+
+                        test_literal_expression(&call_exp.arguments[0], Box::new(1));
+                        test_infix_expression(
+                            &call_exp.arguments[1],
+                            Box::new(2),
+                            "*".to_string(),
+                            Box::new(3),
+                        );
+                        test_infix_expression(
+                            &call_exp.arguments[2],
+                            Box::new(4),
+                            "+".to_string(),
+                            Box::new(5),
+                        );
+                    }
+                    other => {
+                        panic!("exp not CallExpression. got={:?}", other);
+                    }
+                }
+            }
+
+            other => {
+                panic!("stmt not ExpressionStatement. got={:?}", other);
+            }
+        }
+    }
+
     pub fn check_parser_errors(parser: &Parser) {
         let errors = parser.errors();
         if errors.len() == 0 {
