@@ -131,14 +131,16 @@ impl Parser {
     }
 
     fn parse_return_statement(&mut self) -> Option<StatementNode> {
-        let stmt = ReturnStatement {
+        let mut stmt = ReturnStatement {
             token: self.cur_token.clone(),
             return_value: Default::default(),
         };
 
         self.next_token();
 
-        while !self.cur_token_is(TokenKind::Semicolon) {
+        stmt.return_value = self.parse_expression(PrecedenceLevel::Lowest);
+
+        if self.peek_token_is(&TokenKind::Semicolon) {
             self.next_token();
         }
 
@@ -172,8 +174,8 @@ impl Parser {
                 None
             } else {
                 self.next_token();
-                // TODO: need to implement expression parsing
-                while !self.expect_peek(TokenKind::Semicolon) {
+                stmt.value = self.parse_expression(PrecedenceLevel::Lowest);
+                if self.peek_token_is(&TokenKind::Semicolon) {
                     self.next_token();
                 }
                 Some(StatementNode::Let(stmt))
@@ -495,104 +497,94 @@ mod tests {
 
     #[test]
     fn test_let_statements() {
-        let input = r#"
-        let x = 5;
-        let y = 10;
-        let foobar = 838383;
-        "#;
+        let tests: Vec<(&str, &str, Box<dyn any::Any>)> = vec![
+            ("let x = 5;", "x", Box::new(5)),
+            ("let y = 10;", "y", Box::new(10)),
+            ("let foobar = 838383;", "foobar", Box::new(838383)),
+        ];
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
+        for test in tests {
+            let lexer = Lexer::new(test.0);
+            let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program();
+            let program = parser.parse_program().unwrap();
 
-        check_parser_errors(&parser);
+            check_parser_errors(&parser);
 
-        match program {
-            Some(program) => {
-                assert_eq!(program.statements.len(), 3);
-                let tests = vec!["x", "y", "foobar"];
-                for (i, expected) in tests.into_iter().enumerate() {
-                    let stmt = &program.statements[i];
-                    assert_eq!(
-                        stmt.token_literal(),
-                        "let",
-                        "token literal is not let. got={}",
-                        stmt.token_literal()
+            assert_eq!(
+                program.statements.len(),
+                1,
+                "program.statements does not contain 1 statements. got={}",
+                program.statements.len()
+            );
+
+            let stmt = &program.statements[0];
+
+            test_let_statement(stmt, test.1);
+
+            match stmt {
+                StatementNode::Let(let_stmt) => {
+                    test_literal_expression(
+                        let_stmt
+                            .value
+                            .as_ref()
+                            .expect("error parsing value of let statement"),
+                        test.2,
                     );
-                    match stmt {
-                        StatementNode::Let(let_stmt) => {
-                            assert_eq!(
-                                let_stmt.name.value, expected,
-                                "LetStatement.name.value not '{}'. got={}",
-                                expected, let_stmt.name.value
-                            );
-
-                            assert_eq!(
-                                let_stmt.name.token_literal(),
-                                expected,
-                                "LetStatement.name.token_literal() not '{}'. got={}",
-                                expected,
-                                let_stmt.name.token_literal()
-                            );
-                        }
-
-                        other => {
-                            panic!("stmt not LetStatement. got={:?}", other);
-                        }
-                    }
+                }
+                other => {
+                    panic!("stmt not LetStatement. got={:?}", other);
                 }
             }
-            None => {
-                panic!("parse_program() returned None")
-            }
-        };
+        }
     }
 
     #[test]
     fn test_return_statement() {
-        let input = r#"
-        return 5;
-        return 10;
-        return 993322;
-        "#;
+        let tests: Vec<(&str, Box<dyn any::Any>)> = vec![
+            ("return 5;", Box::new(5)),
+            ("return 10;", Box::new(10)),
+            ("return 838383;", Box::new(838383)),
+        ];
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
+        for test in tests {
+            let lexer = Lexer::new(test.0);
+            let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program();
+            let program = parser.parse_program().unwrap();
 
-        check_parser_errors(&parser);
+            check_parser_errors(&parser);
 
-        match program {
-            Some(program) => {
-                assert_eq!(
-                    program.statements.len(),
-                    3,
-                    "program.statements does not contain 3 statements. got={}",
-                    program.statements.len()
-                );
-                for stmt in program.statements {
-                    match stmt {
-                        StatementNode::Return(return_stmt) => {
-                            assert_eq!(
-                                return_stmt.token_literal(),
-                                "return",
-                                "return_stmt.token_literal() not 'return'. got={}",
-                                return_stmt.token_literal()
-                            );
-                        }
+            assert_eq!(
+                program.statements.len(),
+                1,
+                "program.statements does not contain 1 statements. got={}",
+                program.statements.len()
+            );
 
-                        other => {
-                            panic!("stmt not ReturnStatement. got={:?}", other);
-                        }
-                    }
+            let stmt = &program.statements[0];
+
+            match stmt {
+                StatementNode::Return(return_stmt) => {
+                    assert_eq!(
+                        return_stmt.token_literal(),
+                        "return",
+                        "token literal not `return`, got={}",
+                        return_stmt.token_literal()
+                    );
+                    test_literal_expression(
+                        return_stmt
+                            .return_value
+                            .as_ref()
+                            .expect("error parsing return value"),
+                        test.1,
+                    );
+                }
+                other => {
+                    panic!("stmt not ReturnStatement. got={:?}", other);
                 }
             }
-            None => {
-                panic!("parse_program() returned None")
-            }
-        };
+        }
     }
 
     #[test]
@@ -854,7 +846,7 @@ mod tests {
             (
                 "add(a + b + c * d / f + g)",
                 "add((((a + b) + ((c * d) / f)) + g))",
-            )
+            ),
         ];
 
         for test in tests {
@@ -1418,6 +1410,32 @@ mod tests {
             other => {
                 panic!("exp not Boolean. got={:?}", other);
             }
+        }
+    }
+
+    fn test_let_statement(stmt: &StatementNode, expected: &str) {
+        assert_eq!(
+            stmt.token_literal(),
+            "let",
+            "token literal not `let`. got={}",
+            stmt.token_literal()
+        );
+        match stmt {
+            StatementNode::Let(let_stmt) => {
+                assert_eq!(
+                    let_stmt.name.value, expected,
+                    "LetStatement name value not {}. got {}",
+                    expected, let_stmt.name.value
+                );
+                assert_eq!(
+                    let_stmt.name.token_literal(),
+                    expected,
+                    "LetStatement name value not {}. got {}",
+                    expected,
+                    let_stmt.name.token_literal()
+                );
+            }
+            other => panic!("not a Let Statement. got={:?}", other),
         }
     }
 }
