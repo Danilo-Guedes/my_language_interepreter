@@ -42,7 +42,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    fn new(lexer: Lexer) -> Parser {
+    pub fn new(lexer: Lexer) -> Parser {
         let mut parser = Parser {
             lexer,
             cur_token: Default::default(),
@@ -118,7 +118,7 @@ impl Parser {
         self.cur_token.kind == token_kind
     }
 
-    fn errors(&self) -> &Vec<String> {
+    pub fn errors(&self) -> &Vec<String> {
         &self.errors
     }
 
