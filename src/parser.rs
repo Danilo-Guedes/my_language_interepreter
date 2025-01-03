@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::ast::{
-    BlockStatement, Boolean, ExpressionNode, ExpressionStatement, Identifier, IfExpression,
-    InfixExpression, IntegerLiteral, LetStatement, PrefixExpression, Program, ReturnStatement,
-    StatementNode,
+    BlockStatement, Boolean, ExpressionNode, ExpressionStatement, FunctionLiteral, Identifier,
+    IfExpression, InfixExpression, IntegerLiteral, LetStatement, PrefixExpression, Program,
+    ReturnStatement, StatementNode,
 };
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
@@ -52,6 +52,7 @@ impl Parser {
             infix_parse_fns: HashMap::new(),
         };
 
+        //PREFIX
         parser.register_prefix(TokenKind::Ident, Self::parse_identifier);
         parser.register_prefix(TokenKind::Int, Self::parse_integer_literal);
         parser.register_prefix(TokenKind::Bang, Self::parse_prefix_expression);
@@ -60,7 +61,9 @@ impl Parser {
         parser.register_prefix(TokenKind::False, Self::parse_boolean);
         parser.register_prefix(TokenKind::LParen, Self::parse_grouped_expression);
         parser.register_prefix(TokenKind::If, Self::parse_if_expression);
+        parser.register_prefix(TokenKind::Function, Self::parse_function_literal);
 
+        //INFIX
         parser.register_infix(TokenKind::Plus, Self::parse_infix_expression);
         parser.register_infix(TokenKind::Minus, Self::parse_infix_expression);
         parser.register_infix(TokenKind::Slash, Self::parse_infix_expression);
@@ -375,6 +378,63 @@ impl Parser {
 
         block
     }
+    fn parse_function_literal(&mut self) -> Option<ExpressionNode> {
+        let mut func_lit = FunctionLiteral {
+            token: self.cur_token.clone(),
+            parameters: Vec::new(),
+            body: Default::default(),
+        };
+
+        if !self.expect_peek(TokenKind::LParen) {
+            return None;
+        }
+
+        func_lit.parameters = self
+            .parse_function_parameters()
+            .expect("error parsing parameters");
+
+        if !self.expect_peek(TokenKind::LBrace) {
+            return None;
+        }
+
+        func_lit.body = self.parse_block_statement();
+
+        Some(ExpressionNode::Function(func_lit))
+    }
+
+    fn parse_function_parameters(&mut self) -> Option<Vec<Identifier>> {
+        let mut identifiers = Vec::new();
+
+        if self.peek_token_is(&TokenKind::RParen) {
+            self.next_token();
+            return Some(identifiers);
+        }
+
+        self.next_token();
+
+        let ident = Identifier {
+            token: self.cur_token.clone(),
+            value: self.cur_token.literal.clone(),
+        };
+
+        identifiers.push(ident);
+
+        while self.peek_token_is(&TokenKind::Comma) {
+            self.next_token();
+            self.next_token();
+            let ident = Identifier {
+                token: self.cur_token.clone(),
+                value: self.cur_token.literal.clone(),
+            };
+            identifiers.push(ident);
+        }
+
+        if !self.expect_peek(TokenKind::RParen) {
+            return None;
+        }
+
+        Some(identifiers)
+    }
 }
 
 #[cfg(test)]
@@ -656,139 +716,6 @@ mod tests {
                 other => {
                     panic!("stmt not ExpressionStatement. got={:?}", other);
                 }
-            }
-        }
-    }
-
-    #[test]
-    fn test_function_literal_parsing() {
-        let input = "fn(x, y) { x + y; }";
-
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program = parser.parse_program().unwrap();
-
-        check_parser_errors(&parser);
-
-        assert_eq!(
-            program.statements.len(),
-            1,
-            "program.statements does not contain 1 statements. got={}",
-            program.statements.len()
-        );
-
-        match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
-
-                match exp_stmt.expression.as_ref().unwrap() {
-                    ExpressionNode::Function(function) => {
-                        assert_eq!(
-                            function.parameters.len(),
-                            2,
-                            "function literal parameters wrong. want 2. got={}",
-                            function.parameters.len()
-                        );
-
-                        match &function.parameters[0] {
-                            Identifier { token, value } => {
-                                assert_eq!(
-                                    value, "x",
-                                    "function literal parameter is not 'x'. got={}",
-                                    value
-                                );
-                                assert_eq!(
-                                    token.literal, "x",
-                                    "function literal parameter is not 'x'. got={}",
-                                    token.literal
-                                )
-                            }
-                        }
-
-                        match &function.parameters[1] {
-                            Identifier { token, value } => {
-                                assert_eq!(
-                                    value, "y",
-                                    "function literal parameter is not 'y'. got={}",
-                                    value
-                                );
-                                assert_eq!(
-                                    token.literal, "y",
-                                    "function literal parameter is not 'y'. got={}",
-                                    token.literal
-                                )
-                            }
-                        }
-
-                        assert_eq!(
-                            function.body.statements.len(),
-                            1,
-                            "function.body.statements has not 1 statements. got={}",
-                            function.body.statements.len()
-                        );
-
-                        match &function.body.statements[0] {
-                            StatementNode::Expression(body_exp) => {
-                                test_infix_expression(
-                                    &body_exp.expression.as_ref().unwrap(),
-                                    Box::new("x"),
-                                    "+".to_string(),
-                                    Box::new("y"),
-                                );
-                            }
-                            other => {
-                                panic!(
-                                    "function body stmt is not ExpressionStatement. got={:?}",
-                                    other
-                                );
-                            }
-                        }
-                    }
-                    other => {
-                        panic!("exp not FunctionLiteral. got={:?}", other);
-                    }
-                }
-            }
-
-            other => {
-                panic!("stmt not ExpressionStatement. got={:?}", other);
-            }
-        }
-    }
-
-    pub fn check_parser_errors(parser: &Parser) {
-        let errors = parser.errors();
-        if errors.len() == 0 {
-            return;
-        }
-
-        eprintln!("parser has {} errors", errors.len());
-        for error in errors {
-            eprintln!("parser error: {}", error);
-        }
-        panic!("parser errors found");
-    }
-
-    fn test_integer_literal(exp: &ExpressionNode, value: i64) {
-        match exp {
-            ExpressionNode::Integer(integer) => {
-                assert_eq!(
-                    integer.value, value,
-                    "integer.value not {}. got={}",
-                    value, integer.value
-                );
-
-                assert_eq!(
-                    integer.token_literal(),
-                    value.to_string(),
-                    "integer.token_literal() not '{}'. got={}",
-                    value,
-                    integer.token_literal()
-                );
-            }
-            other => {
-                panic!("exp not IntegerLiteral. got={:?}", other);
             }
         }
     }
@@ -1099,6 +1026,199 @@ mod tests {
 
             other => {
                 panic!("stmt not ExpressionStatement. got={:?}", other);
+            }
+        }
+    }
+
+    #[test]
+    fn test_function_literal_parsing() {
+        let input = "fn(x, y) { x + y; }";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "program.statements does not contain 1 statements. got={}",
+            program.statements.len()
+        );
+
+        match &program.statements[0] {
+            StatementNode::Expression(exp_stmt) => {
+                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                match exp_stmt.expression.as_ref().unwrap() {
+                    ExpressionNode::Function(function) => {
+                        assert_eq!(
+                            function.parameters.len(),
+                            2,
+                            "function literal parameters wrong. want 2. got={}",
+                            function.parameters.len()
+                        );
+
+                        match &function.parameters[0] {
+                            Identifier { token, value } => {
+                                assert_eq!(
+                                    value, "x",
+                                    "function literal parameter is not 'x'. got={}",
+                                    value
+                                );
+                                assert_eq!(
+                                    token.literal, "x",
+                                    "function literal parameter is not 'x'. got={}",
+                                    token.literal
+                                )
+                            }
+                        }
+
+                        match &function.parameters[1] {
+                            Identifier { token, value } => {
+                                assert_eq!(
+                                    value, "y",
+                                    "function literal parameter is not 'y'. got={}",
+                                    value
+                                );
+                                assert_eq!(
+                                    token.literal, "y",
+                                    "function literal parameter is not 'y'. got={}",
+                                    token.literal
+                                )
+                            }
+                        }
+
+                        assert_eq!(
+                            function.body.statements.len(),
+                            1,
+                            "function.body.statements has not 1 statements. got={}",
+                            function.body.statements.len()
+                        );
+
+                        match &function.body.statements[0] {
+                            StatementNode::Expression(body_exp) => {
+                                test_infix_expression(
+                                    &body_exp.expression.as_ref().unwrap(),
+                                    Box::new("x"),
+                                    "+".to_string(),
+                                    Box::new("y"),
+                                );
+                            }
+                            other => {
+                                panic!(
+                                    "function body stmt is not ExpressionStatement. got={:?}",
+                                    other
+                                );
+                            }
+                        }
+                    }
+                    other => {
+                        panic!("exp not FunctionLiteral. got={:?}", other);
+                    }
+                }
+            }
+
+            other => {
+                panic!("stmt not ExpressionStatement. got={:?}", other);
+            }
+        }
+    }
+
+    #[test]
+    fn test_function_paramenter_parsing() {
+        let tests = vec![
+            ("fn() {};", vec![]),
+            ("fn(x) {};", vec!["x"]),
+            ("fn(x, y, z) {};", vec!["x", "y", "z"]),
+        ];
+
+        for test in tests {
+            let lexer = Lexer::new(test.0);
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program().unwrap();
+
+            check_parser_errors(&parser);
+
+            match &program.statements[0] {
+                StatementNode::Expression(exp_stmt) => {
+                    assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                    match exp_stmt.expression.as_ref().unwrap() {
+                        ExpressionNode::Function(function) => {
+                            assert_eq!(
+                                function.parameters.len(),
+                                test.1.len(),
+                                "length parameters wrong. want {}, got={}",
+                                test.1.len(),
+                                function.parameters.len()
+                            );
+
+                            for (i, param) in test.1.into_iter().enumerate() {
+                                match &function.parameters[i] {
+                                    Identifier { token, value } => {
+                                        assert_eq!(
+                                            value, param,
+                                            "function literal parameter is not '{}'. got={}",
+                                            param, value
+                                        );
+                                        assert_eq!(
+                                            token.literal, param,
+                                            "function literal parameter is not '{}'. got={}",
+                                            param, token.literal
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        other => {
+                            panic!("exp not FunctionLiteral. got={:?}", other);
+                        }
+                    }
+                }
+
+                other => {
+                    panic!("stmt not ExpressionStatement. got={:?}", other);
+                }
+            }
+        }
+    }
+
+    pub fn check_parser_errors(parser: &Parser) {
+        let errors = parser.errors();
+        if errors.len() == 0 {
+            return;
+        }
+
+        eprintln!("parser has {} errors", errors.len());
+        for error in errors {
+            eprintln!("parser error: {}", error);
+        }
+        panic!("parser errors found");
+    }
+
+    fn test_integer_literal(exp: &ExpressionNode, value: i64) {
+        match exp {
+            ExpressionNode::Integer(integer) => {
+                assert_eq!(
+                    integer.value, value,
+                    "integer.value not {}. got={}",
+                    value, integer.value
+                );
+
+                assert_eq!(
+                    integer.token_literal(),
+                    value.to_string(),
+                    "integer.token_literal() not '{}'. got={}",
+                    value,
+                    integer.token_literal()
+                );
+            }
+            other => {
+                panic!("exp not IntegerLiteral. got={:?}", other);
             }
         }
     }
