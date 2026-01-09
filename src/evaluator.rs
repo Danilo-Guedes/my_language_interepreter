@@ -37,10 +37,14 @@ impl Evaluator {
                 ExpressionNode::BooleanNode(boolean) => {
                     Self::native_bool_to_boolean_object(boolean.value)
                 }
-                _ => Object::Null,
+                ExpressionNode::Prefix(prefix_exp) => {
+                    let right: Object = self.eval_expression(Some(*prefix_exp.right));
+                    return Self::eval_prefix_expression(prefix_exp.operator, right);
+                }
+                _ => NULL,
             };
         }
-        Object::Null
+        NULL
     }
 
     fn native_bool_to_boolean_object(input: bool) -> Object {
@@ -48,6 +52,22 @@ impl Evaluator {
             TRUE
         } else {
             FALSE
+        }
+    }
+
+    fn eval_prefix_expression(operator: String, right: Object) -> Object {
+        match operator.as_str() {
+            "!" => Self::eval_bang_operator_expression(right),
+            _ => NULL,
+        }
+    }
+
+    fn eval_bang_operator_expression(right: Object) -> Object {
+        match right {
+            Object::Boolean(true) => FALSE,
+            Object::Boolean(false) => TRUE,
+            Object::Null => TRUE,
+            _ => FALSE,
         }
     }
 }
@@ -93,6 +113,24 @@ mod test {
             test_boolean_object(evaluated, test.1);
         }
     }
+
+    #[test]
+    fn test_bang_operator() {
+        let tests = vec![
+            ("!true", false),
+            ("!false", true),
+            ("!5", false),
+            ("!!true", true),
+            ("!!false", false),
+            ("!!5", true),
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.0);
+            test_boolean_object(evaluated, test.1);
+        }
+    }
+
     fn test_eval(input: &str) -> Object {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
