@@ -1,21 +1,48 @@
-use crate::{ast::Program, object::Object};
+use crate::{
+    ast::{ExpressionNode, Program, StatementNode},
+    object::Object,
+};
 
-fn eval_program(program: Program) -> Object {
-    todo!();
-    // let mut result = Object::Null;
+pub struct Evaluator {}
 
-    // for statement in program.statements {
-    //     result = eval_statement(statement);
-    // }
+impl Evaluator {
+    pub fn new() -> Self {
+        Evaluator {}
+    }
 
-    // result
+    fn eval_program(&self, program: Program) -> Object {
+        let mut restult = Object::Null;
+
+        for stmt in program.statements {
+            restult = self.eval_statement(stmt);
+        }
+        restult
+    }
+
+    fn eval_statement(&self, stmt: StatementNode) -> Object {
+        match stmt {
+            StatementNode::Expression(exp_stmt) => self.eval_expression(exp_stmt.expression),
+            _ => Object::Null,
+        }
+    }
+
+    fn eval_expression(&self, expression: Option<ExpressionNode>) -> Object {
+        if let Some(expr) = expression {
+            match expr {
+                ExpressionNode::Integer(int) => Object::Integer(int.value),
+                _ => Object::Null,
+            }
+        } else {
+            Object::Null
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
     use crate::{lexer::Lexer, object::Object, parser::Parser};
 
-    use super::eval_program;
+    use super::Evaluator;
 
     #[test]
     fn test_eval_integer_expression() {
@@ -47,7 +74,9 @@ mod test {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().expect("Failed to parse program");
-        eval_program(program)
+
+        let evaluator = Evaluator::new();
+        evaluator.eval_program(program)
     }
 
     fn test_integer_object(obj: Object, expected: i64) {
