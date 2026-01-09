@@ -10,7 +10,7 @@ impl Evaluator {
         Evaluator {}
     }
 
-    fn eval_program(&self, program: Program) -> Object {
+    pub fn eval_program(&self, program: Program) -> Object {
         let mut restult = Object::Null;
 
         for stmt in program.statements {

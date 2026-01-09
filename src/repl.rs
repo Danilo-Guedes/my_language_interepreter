@@ -1,9 +1,11 @@
-use crate::ast::Node;
+use crate::evaluator::Evaluator;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use std::io::{Stdin, Stdout, Write};
 
 pub fn start(stdin: Stdin, mut stdout: Stdout) {
+    let evaluator = Evaluator::new();
+
     loop {
         write!(stdout, ">> ").expect("Failed to write to stdout");
         stdout.flush().expect("Failed to flush stdout");
@@ -25,9 +27,9 @@ pub fn start(stdin: Stdin, mut stdout: Stdout) {
             continue;
         }
 
-        let parsed_program_string = program.print_string();
+        let evaluated = evaluator.eval_program(program);
 
-        writeln!(stdout, "{}", parsed_program_string).expect("Failed to write to stdout");
+        writeln!(stdout, "{}", evaluated).expect("Failed to write {evaluated} to stdout");
     }
 }
 
