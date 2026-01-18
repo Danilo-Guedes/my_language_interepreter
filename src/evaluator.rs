@@ -58,6 +58,7 @@ impl Evaluator {
     fn eval_prefix_expression(operator: String, right: Object) -> Object {
         match operator.as_str() {
             "!" => Self::eval_bang_operator_expression(right),
+            "-" => Self::eval_minus_prefix_operator_expression(right),
             _ => NULL,
         }
     }
@@ -68,6 +69,13 @@ impl Evaluator {
             Object::Boolean(false) => TRUE,
             Object::Null => TRUE,
             _ => FALSE,
+        }
+    }
+
+    fn eval_minus_prefix_operator_expression(right: Object) -> Object {
+        match right {
+            Object::Integer(value) => Object::Integer(-value),
+            _ => NULL,
         }
     }
 }
@@ -83,8 +91,8 @@ mod test {
         let tests = vec![
             ("5", 5),
             ("10", 10),
-            // ("-5", -5),
-            // ("-10", -10),
+            ("-5", -5),
+            ("-10", -10),
             // ("5 + 5 + 5 + 5 - 10", 10),
             // ("2 * 2 * 2 * 2 * 2", 32),
             // ("-50 + 100 + -50", 0),
