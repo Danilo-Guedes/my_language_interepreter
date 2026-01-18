@@ -1,5 +1,5 @@
 use crate::{
-    ast::{ExpressionNode, Program, StatementNode},
+    ast::{BlockStatement, ExpressionNode, IfExpression, Program, StatementNode},
     object::Object,
 };
 
@@ -46,6 +46,7 @@ impl Evaluator {
                     let right: Object = self.eval_expression(Some(*inf_exp.right));
                     return Self::eval_infix_expression(inf_exp.operator, &left, &right);
                 }
+                ExpressionNode::IfExpressionNode(if_exp) => self.eval_if_expression(if_exp),
                 _ => NULL,
             };
         }
@@ -66,6 +67,36 @@ impl Evaluator {
             "-" => Self::eval_minus_prefix_operator_expression(right),
             _ => NULL,
         }
+    }
+
+    fn eval_if_expression(&self, if_exp: IfExpression) -> Object {
+        let condition = self.eval_expression(Some(*if_exp.condition));
+
+        return if Self::is_truthy(condition) {
+            self.eval_block_statement(if_exp.consequence)
+        } else if let Some(alternative) = if_exp.alternative {
+            self.eval_block_statement(alternative)
+        } else {
+            NULL
+        };
+    }
+
+    fn is_truthy(obj: Object) -> bool {
+        match obj {
+            Object::Null => false,
+            Object::Boolean(true) => true,
+            Object::Boolean(false) => false,
+            _ => true,
+        }
+    }
+
+    fn eval_block_statement(&self, block: BlockStatement) -> Object {
+        let mut result = Object::Null;
+
+        for stmt in block.statements {
+            result = self.eval_statement(stmt);
+        }
+        result
     }
 
     fn eval_bang_operator_expression(right: Object) -> Object {
