@@ -41,6 +41,11 @@ impl Evaluator {
                     let right: Object = self.eval_expression(Some(*prefix_exp.right));
                     return Self::eval_prefix_expression(prefix_exp.operator, right);
                 }
+                ExpressionNode::Infix(inf_exp) => {
+                    let left: Object = self.eval_expression(Some(*inf_exp.left));
+                    let right: Object = self.eval_expression(Some(*inf_exp.right));
+                    return Self::eval_infix_expression(inf_exp.operator, &left, &right);
+                }
                 _ => NULL,
             };
         }
@@ -78,6 +83,25 @@ impl Evaluator {
             _ => NULL,
         }
     }
+
+    fn eval_infix_expression(operator: String, left: &Object, right: &Object) -> Object {
+        match (left, right) {
+            (Object::Integer(left_val), Object::Integer(right_val)) => {
+                Self::eval_integer_infix_expression(operator, *left_val, *right_val)
+            }
+            _ => NULL,
+        }
+    }
+
+    fn eval_integer_infix_expression(operator: String, left: i64, right: i64) -> Object {
+        match operator.as_str() {
+            "+" => Object::Integer(left + right),
+            "-" => Object::Integer(left - right),
+            "*" => Object::Integer(left * right),
+            "/" => Object::Integer(left / right),
+            _ => NULL,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -93,17 +117,17 @@ mod test {
             ("10", 10),
             ("-5", -5),
             ("-10", -10),
-            // ("5 + 5 + 5 + 5 - 10", 10),
-            // ("2 * 2 * 2 * 2 * 2", 32),
-            // ("-50 + 100 + -50", 0),
-            // ("5 * 2 + 10", 20),
-            // ("5 + 2 * 10", 25),
-            // ("20 + 2 * -10", 0),
-            // ("50 / 2 * 2 + 10", 60),
-            // ("2 * (5 + 10)", 30),
-            // ("3 * 3 * 3 + 10", 37),
-            // ("3 * (3 * 3) + 10", 37),
-            // ("(5 + 10 * 2 + 15 / 3) * 2 + -10", 50),
+            ("5 + 5 + 5 + 5 - 10", 10),
+            ("2 * 2 * 2 * 2 * 2", 32),
+            ("-50 + 100 + -50", 0),
+            ("5 * 2 + 10", 20),
+            ("5 + 2 * 10", 25),
+            ("20 + 2 * -10", 0),
+            ("50 / 2 * 2 + 10", 60),
+            ("2 * (5 + 10)", 30),
+            ("3 * 3 * 3 + 10", 37),
+            ("3 * (3 * 3) + 10", 37),
+            ("(5 + 10 * 2 + 15 / 3) * 2 + -10", 50),
         ];
 
         for test in tests {
