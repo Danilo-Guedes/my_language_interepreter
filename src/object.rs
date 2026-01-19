@@ -5,6 +5,7 @@ pub enum Object {
     Integer(i64),
     Boolean(bool),
     ReturnValue(Box<Object>),
+    Error(String),
     Null,
 }
 
@@ -13,8 +14,9 @@ impl Object {
         match self {
             Object::Integer(_) => String::from("INTEGER"),
             Object::Boolean(_) => String::from("BOOLEAN"),
-            Object::Null => String::from("NULL"),
             Object::ReturnValue(_) => String::from("RETURN_VALUE"),
+            Object::Error(_) => String::from("ERROR"),
+            Object::Null => String::from("NULL"),
         }
     }
 }
@@ -25,6 +27,7 @@ impl Display for Object {
             Object::Integer(value) => write!(f, "{}", value),
             Object::Boolean(value) => write!(f, "{}", value),
             Object::ReturnValue(ret_value) => write!(f, "{}", ret_value),
+            Object::Error(message) => write!(f, "ERROR: {}", message),
             Object::Null => write!(f, "null"),
         }
     }
