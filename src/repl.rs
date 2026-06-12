@@ -4,7 +4,7 @@ use crate::parser::Parser;
 use std::io::{Stdin, Stdout, Write};
 
 pub fn start(stdin: Stdin, mut stdout: Stdout) {
-    let evaluator = Evaluator::new();
+    let mut evaluator = Evaluator::new();
 
     loop {
         write!(stdout, ">> ").expect("Failed to write to stdout");
