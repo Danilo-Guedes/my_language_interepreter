@@ -221,7 +221,7 @@ impl Evaluator {
 
 #[cfg(test)]
 mod test {
-    use crate::{lexer::Lexer, object::Object, parser::Parser};
+    use crate::{ast::Node, lexer::Lexer, object::Object, parser::Parser};
 
     use super::Evaluator;
 
@@ -378,6 +378,35 @@ mod test {
 
         for test in tests {
             test_integer_object(test_eval(test.0), test.1);
+        }
+    }
+
+    #[test]
+    fn test_function_object() {
+        let input = "fn(x) { x + 2; };";
+        let evaluated = test_eval(input);
+        match evaluated {
+            Object::Func(func) => {
+                assert_eq!(
+                    func.parameters.len(),
+                    1,
+                    "function has wrong parameters length. got={}",
+                    func.parameters.len()
+                );
+                assert_eq!(
+                    func.parameters[0].print_string(),
+                    "x",
+                    "paramentes is not 'x', got={}",
+                    func.parameters[0].print_string()
+                );
+                assert_eq!(
+                    func.body.print_string(),
+                    "(x + 2);",
+                    "function body is not '(x + 2);', got={}",
+                    func.body.print_string()
+                );
+            }
+            _ => panic!("object is not Function, got {:?}", evaluated),
         }
     }
 
