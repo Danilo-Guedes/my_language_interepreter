@@ -5,7 +5,7 @@ pub trait Node {
     fn print_string(&self) -> String;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StatementNode {
     Let(LetStatement),
     Return(ReturnStatement),
@@ -33,7 +33,7 @@ impl Node for StatementNode {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 
 pub enum ExpressionNode {
     #[default]
@@ -104,7 +104,7 @@ impl Node for Program {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 
 pub struct LetStatement {
     pub token: Token,
@@ -130,7 +130,7 @@ impl Node for LetStatement {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 
 pub struct Identifier {
     pub token: Token,
@@ -146,7 +146,7 @@ impl Node for Identifier {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ReturnStatement {
     pub token: Token,
     pub return_value: Option<ExpressionNode>,
@@ -168,7 +168,7 @@ impl Node for ReturnStatement {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ExpressionStatement {
     pub token: Token,
     pub expression: Option<ExpressionNode>,
@@ -186,7 +186,7 @@ impl Node for ExpressionStatement {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IntegerLiteral {
     pub token: Token,
     pub value: i64,
@@ -201,7 +201,7 @@ impl Node for IntegerLiteral {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct PrefixExpression {
     pub token: Token,
     pub operator: String,
@@ -222,7 +222,7 @@ impl Node for PrefixExpression {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct InfixExpression {
     pub token: Token,
     pub left: Box<ExpressionNode>,
@@ -245,7 +245,7 @@ impl Node for InfixExpression {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Boolean {
     pub token: Token,
     pub value: bool,
@@ -259,7 +259,7 @@ impl Node for Boolean {
         return self.token_literal();
     }
 }
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct IfExpression {
     pub token: Token,
     pub condition: Box<ExpressionNode>,
@@ -285,7 +285,7 @@ impl Node for IfExpression {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct BlockStatement {
     pub token: Token,
     pub statements: Vec<StatementNode>,
@@ -304,7 +304,7 @@ impl Node for BlockStatement {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionLiteral {
     pub token: Token,
     pub parameters: Vec<Identifier>,
@@ -331,7 +331,7 @@ impl Node for FunctionLiteral {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CallExpression {
     pub token: Token,
     pub function: Box<ExpressionNode>,
