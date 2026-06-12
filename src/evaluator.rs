@@ -2,7 +2,7 @@
 
 use crate::{
     ast::{BlockStatement, ExpressionNode, Identifier, IfExpression, Program, StatementNode},
-    object::{Environment, Object},
+    object::{Environment, Function, Object},
 };
 
 const TRUE: Object = Object::Boolean(true);
@@ -84,6 +84,11 @@ impl Evaluator {
                 }
                 ExpressionNode::IfExpressionNode(if_exp) => self.eval_if_expression(if_exp),
                 ExpressionNode::IdentifierNode(ident) => self.eval_identifier(ident),
+                ExpressionNode::Function(fn_lit) => Object::Func(Function {
+                    parameters: fn_lit.parameters,
+                    body: fn_lit.body,
+                    env: self.env.clone(),
+                }),
                 _ => NULL,
             };
         }
@@ -401,7 +406,7 @@ mod test {
                 );
                 assert_eq!(
                     func.body.print_string(),
-                    "(x + 2);",
+                    "(x + 2)",
                     "function body is not '(x + 2);', got={}",
                     func.body.print_string()
                 );
