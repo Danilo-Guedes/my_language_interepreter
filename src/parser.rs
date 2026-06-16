@@ -62,6 +62,7 @@ impl Parser {
         parser.register_prefix(TokenKind::LParen, Self::parse_grouped_expression);
         parser.register_prefix(TokenKind::If, Self::parse_if_expression);
         parser.register_prefix(TokenKind::Function, Self::parse_function_literal);
+        parser.register_prefix(TokenKind::String, Self::parse_string_literal);
 
         //INFIX
         parser.register_infix(TokenKind::Plus, Self::parse_infix_expression);
@@ -403,6 +404,13 @@ impl Parser {
         func_lit.body = self.parse_block_statement();
 
         Some(ExpressionNode::Function(func_lit))
+    }
+
+    fn parse_string_literal(&mut self) -> Option<ExpressionNode> {
+        Some(ExpressionNode::StringExp(crate::ast::StringLiteral {
+            token: self.cur_token.clone(),
+            value: self.cur_token.literal.clone(),
+        }))
     }
 
     fn parse_function_parameters(&mut self) -> Option<Vec<Identifier>> {
