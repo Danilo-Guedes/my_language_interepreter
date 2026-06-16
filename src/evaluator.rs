@@ -1,6 +1,6 @@
 // use std::{cell::RefCell, rc::Rc};
 
-use std::{ops::Deref};
+use std::ops::Deref;
 
 use crate::{
     ast::{BlockStatement, ExpressionNode, Identifier, IfExpression, Program, StatementNode},
@@ -136,8 +136,8 @@ impl Evaluator {
 
     fn unwrap_return_value(obj: Object) -> Object {
         match obj {
-            Object::ReturnValue(value) => *value.clone(),
-            _ => obj.clone(),
+            Object::ReturnValue(ret) => *ret,
+            _ => obj,
         }
     }
 
@@ -487,6 +487,21 @@ mod test {
         for test in tests {
             test_integer_object(test_eval(test.0), test.1)
         }
+    }
+
+    #[test]
+    fn test_closures() {
+        let input = r#"
+        let newAdder = fn(x) {
+            fn(y) { x + y };
+        };
+
+        let addTwo = newAdder(2);
+
+        addTwo(2);
+        "#;
+
+        test_integer_object(test_eval(input), 4);
     }
 
     fn test_null_object(obj: Object) {

@@ -72,7 +72,10 @@ impl Lexer {
             '/' => Lexer::new_token(TokenKind::Slash, self.ch),
             '<' => Lexer::new_token(TokenKind::LT, self.ch),
             '>' => Lexer::new_token(TokenKind::GT, self.ch),
-
+            '"' => Token {
+                kind: TokenKind::String,
+                literal: self.read_string(),
+            },
             _ => {
                 return if Lexer::is_letter(self.ch) {
                     let literal = self.read_identifier();
@@ -129,6 +132,18 @@ impl Lexer {
             self.read_char();
         }
         number
+    }
+
+    fn read_string(&mut self) -> String {
+        let position = self.position + 1;
+        self.read_char();
+
+        while self.ch != '"' && self.ch != '\0' {
+            self.read_char()
+        }
+
+        let string_slice = &self.input[position..self.position];
+        string_slice.into_iter().collect()
     }
 
     fn peek_char(&self) -> char {
@@ -603,6 +618,46 @@ mod test {
             Token {
                 kind: TokenKind::Semicolon,
                 literal: ";".to_string(),
+            },
+            Token {
+                kind: TokenKind::EOF,
+                literal: "".to_string(),
+            },
+        ];
+
+        let mut lexer = Lexer::new(input);
+
+        for (idx, token) in expected.into_iter().enumerate() {
+            let received_token = lexer.next_token();
+            assert_eq!(
+                token.kind, received_token.kind,
+                "tests[{}] - token type wrong. expected={}, got={}",
+                idx, token.kind, received_token.kind
+            );
+
+            assert_eq!(
+                token.literal, received_token.literal,
+                "tests[{}] - literal wrong. expected={}, got={}",
+                idx, token.literal, received_token.literal
+            );
+        }
+    }
+
+    #[test]
+    fn test_next_token_with_string() {
+        let input: &str = r#"
+            "foobar"
+            "foo bar"
+            "#;
+
+        let expected: Vec<Token> = vec![
+            Token {
+                kind: TokenKind::String,
+                literal: "foobar".to_string(),
+            },
+            Token {
+                kind: TokenKind::String,
+                literal: "foo bar".to_string(),
             },
             Token {
                 kind: TokenKind::EOF,
