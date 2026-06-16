@@ -1294,6 +1294,55 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_string_literal_expression() {
+        let input = r#""Hello, World!""#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "program.statements does not contain 1 statements. got={}",
+            program.statements.len()
+        );
+
+        match &program.statements[0] {
+            StatementNode::Expression(exp_stmt) => {
+                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                match exp_stmt.expression.as_ref().unwrap() {
+                    ExpressionNode::StringExp(string_literal) => {
+                        assert_eq!(
+                            string_literal.value, "Hello, World!",
+                            "string_literal.value not 'Hello, World!'. got={}",
+                            string_literal.value
+                        );
+
+                        assert_eq!(
+                            string_literal.token_literal(),
+                            "Hello, World!",
+                            "string_literal.token_literal() not 'Hello, World!'. got={}",
+                            string_literal.token_literal()
+                        );
+                    }
+                    other => {
+                        panic!("exp not StringLiteral. got={:?}", other);
+                    }
+                }
+            }
+
+            other => {
+                panic!("stmt not ExpressionStatement. got={:?}", other);
+            }
+        }
+    }
+
     pub fn check_parser_errors(parser: &Parser) {
         let errors = parser.errors();
         if errors.len() == 0 {
