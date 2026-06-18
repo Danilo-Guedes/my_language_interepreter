@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::ast::{
-    BlockStatement, Boolean, CallExpression, ExpressionNode, ExpressionStatement, FunctionLiteral,
-    Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement, PrefixExpression,
-    Program, ReturnStatement, StatementNode,
+    ArrayLiteral, BlockStatement, Boolean, CallExpression, ExpressionNode, ExpressionStatement,
+    FunctionLiteral, Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement,
+    PrefixExpression, Program, ReturnStatement, StatementNode, StringLiteral,
 };
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
@@ -63,6 +63,7 @@ impl Parser {
         parser.register_prefix(TokenKind::If, Self::parse_if_expression);
         parser.register_prefix(TokenKind::Function, Self::parse_function_literal);
         parser.register_prefix(TokenKind::String, Self::parse_string_literal);
+        parser.register_prefix(TokenKind::LBracket, Self::parse_array_literal);
 
         //INFIX
         parser.register_infix(TokenKind::Plus, Self::parse_infix_expression);
@@ -407,10 +408,19 @@ impl Parser {
     }
 
     fn parse_string_literal(&mut self) -> Option<ExpressionNode> {
-        Some(ExpressionNode::StringExp(crate::ast::StringLiteral {
+        Some(ExpressionNode::StringExp(StringLiteral {
             token: self.cur_token.clone(),
             value: self.cur_token.literal.clone(),
         }))
+    }
+
+    fn parse_array_literal(&mut self) -> Option<ExpressionNode> {
+        let mut array_literal = ArrayLiteral {
+            token: self.cur_token.clone(),
+            elements: self.parse_expression_list(TokenKind::RBracket),
+        };
+
+        Some(ExpressionNode::Array(array_literal))
     }
 
     fn parse_function_parameters(&mut self) -> Option<Vec<Identifier>> {
@@ -455,24 +465,22 @@ impl Parser {
             arguments: vec![],
         };
 
-        exp.arguments = self
-            .parse_call_arguments()
-            .expect("error parsing arguments");
+        exp.arguments = self.parse_expression_list(TokenKind::RParen);
 
         Some(ExpressionNode::Call(exp))
     }
 
-    fn parse_call_arguments(&mut self) -> Option<Vec<ExpressionNode>> {
-        let mut args = vec![];
+    fn parse_expression_list(&mut self, end_token: TokenKind) -> Vec<ExpressionNode> {
+        let mut node_elements = vec![];
 
-        if self.peek_token_is(&TokenKind::RParen) {
+        if self.peek_token_is(&end_token) {
             self.next_token();
-            return Some(args);
+            return node_elements;
         }
 
         self.next_token();
 
-        args.push(
+        node_elements.push(
             self.parse_expression(PrecedenceLevel::Lowest)
                 .expect("error parsing arguments"),
         );
@@ -480,17 +488,17 @@ impl Parser {
         while self.peek_token_is(&TokenKind::Comma) {
             self.next_token();
             self.next_token();
-            args.push(
+            node_elements.push(
                 self.parse_expression(PrecedenceLevel::Lowest)
                     .expect("error parsing arguments"),
             );
         }
 
-        if !self.expect_peek(TokenKind::RParen) {
-            return None;
+        if !self.expect_peek(end_token) {
+            return vec![];
         }
 
-        Some(args)
+        node_elements
     }
 }
 
@@ -1348,6 +1356,55 @@ mod tests {
             other => {
                 panic!("stmt not ExpressionStatement. got={:?}", other);
             }
+        }
+    }
+
+    #[test]
+    fn test_parsing_array_literal() {
+        let input = "[1, 2 * 2, 3 + 3]";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        match &program.statements[0] {
+            StatementNode::Expression(exp_stmt) => {
+                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                match &exp_stmt
+                    .expression
+                    .as_ref()
+                    .expect("Error parsing expression for array literal")
+                {
+                    ExpressionNode::Array(array_literal) => {
+                        assert_eq!(
+                            array_literal.elements.len(),
+                            3,
+                            "array_literal.elements has wrong length. got={}",
+                            array_literal.elements.len()
+                        );
+
+                        test_integer_literal(&array_literal.elements[0], 1);
+                        test_infix_expression(
+                            &array_literal.elements[1],
+                            Box::new(2),
+                            "*".to_string(),
+                            Box::new(2),
+                        );
+                        test_infix_expression(
+                            &array_literal.elements[2],
+                            Box::new(3),
+                            "+".to_string(),
+                            Box::new(3),
+                        );
+                    }
+                    other => panic!("exp not ArrayLiteral. got={:?}", other),
+                }
+            }
+            other => panic!("stmt not ExpressionStatement. got={:?}", other),
         }
     }
 

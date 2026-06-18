@@ -47,6 +47,7 @@ pub enum ExpressionNode {
     Function(FunctionLiteral),
     Call(CallExpression),
     StringExp(StringLiteral),
+    Array(ArrayLiteral),
 }
 
 impl Node for ExpressionNode {
@@ -61,6 +62,7 @@ impl Node for ExpressionNode {
             Self::Function(function) => function.token_literal(),
             Self::Call(call_expression) => call_expression.token_literal(),
             Self::StringExp(string_literal) => string_literal.token_literal(),
+            Self::Array(array_literal) => array_literal.token_literal(),
             Self::None => String::new(),
         };
     }
@@ -76,6 +78,7 @@ impl Node for ExpressionNode {
             Self::Function(function) => function.print_string(),
             Self::Call(call_expression) => call_expression.print_string(),
             Self::StringExp(string_literal) => string_literal.print_string(),
+            Self::Array(array_literal) => array_literal.print_string(),
             Self::None => String::new(),
         };
     }
@@ -372,6 +375,31 @@ impl Node for StringLiteral {
     }
     fn print_string(&self) -> String {
         return self.token_literal();
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ArrayLiteral {
+    pub token: Token,
+    pub elements: Vec<ExpressionNode>,
+}
+
+impl Node for ArrayLiteral {
+    fn token_literal(&self) -> String {
+        return self.token.literal.clone();
+    }
+    fn print_string(&self) -> String {
+        let mut out = String::new();
+        let mut elements: Vec<String> = Vec::new();
+        for element in &self.elements {
+            elements.push(element.print_string());
+        }
+
+        out.push_str("[");
+        out.push_str(elements.join(", ").as_str());
+
+        out.push_str("]");
+        out
     }
 }
 
