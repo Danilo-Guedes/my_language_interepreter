@@ -32,6 +32,8 @@ pub enum TokenKind {
     RParen,
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
     // Keywords
     Function,
     Let,
@@ -73,6 +75,8 @@ impl Display for TokenKind {
             TokenKind::If => write!(f, "If"),
             TokenKind::Else => write!(f, "Else"),
             TokenKind::Return => write!(f, "Return"),
+            TokenKind::LBracket => write!(f, "["),
+            TokenKind::RBracket => write!(f, "]"),
             TokenKind::String => write!(f, "String"),
         }
     }

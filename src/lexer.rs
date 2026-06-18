@@ -76,6 +76,8 @@ impl Lexer {
                 kind: TokenKind::String,
                 literal: self.read_string(),
             },
+            '[' => Lexer::new_token(TokenKind::LBracket, self.ch),
+            ']' => Lexer::new_token(TokenKind::RBracket, self.ch),
             _ => {
                 return if Lexer::is_letter(self.ch) {
                     let literal = self.read_identifier();
@@ -658,6 +660,61 @@ mod test {
             Token {
                 kind: TokenKind::String,
                 literal: "foo bar".to_string(),
+            },
+            Token {
+                kind: TokenKind::EOF,
+                literal: "".to_string(),
+            },
+        ];
+
+        let mut lexer = Lexer::new(input);
+
+        for (idx, token) in expected.into_iter().enumerate() {
+            let received_token = lexer.next_token();
+            assert_eq!(
+                token.kind, received_token.kind,
+                "tests[{}] - token type wrong. expected={}, got={}",
+                idx, token.kind, received_token.kind
+            );
+
+            assert_eq!(
+                token.literal, received_token.literal,
+                "tests[{}] - literal wrong. expected={}, got={}",
+                idx, token.literal, received_token.literal
+            );
+        }
+    }
+
+    #[test]
+    fn test_next_token_with_arrays() {
+        let input: &str = r#"
+            [1, 2];
+            "#;
+
+        let expected: Vec<Token> = vec![
+            Token {
+                kind: TokenKind::LBracket,
+                literal: "[".to_string(),
+            },
+            Token {
+                kind: TokenKind::Int,
+                literal: "1".to_string(),
+            },
+            Token {
+                kind: TokenKind::Comma,
+                literal: ",".to_string(),
+            },
+            Token {
+                kind: TokenKind::Int,
+                literal: "2".to_string(),
+            },
+            Token {
+                kind: TokenKind::RBracket,
+                literal: "]".to_string(),
+            },
+            Token {
+                kind: TokenKind::Semicolon,
+                literal: ";".to_string(),
             },
             Token {
                 kind: TokenKind::EOF,
