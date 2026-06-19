@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::ast::{
     ArrayLiteral, BlockStatement, Boolean, CallExpression, ExpressionNode, ExpressionStatement,
-    FunctionLiteral, Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement,
-    PrefixExpression, Program, ReturnStatement, StatementNode, StringLiteral,
+    FunctionLiteral, Identifier, IfExpression, IndexExpression, InfixExpression, IntegerLiteral,
+    LetStatement, PrefixExpression, Program, ReturnStatement, StatementNode, StringLiteral,
 };
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
@@ -20,6 +20,7 @@ enum PrecedenceLevel {
     Product = 4,
     Prefix = 5,
     Call = 6,
+    Index = 7,
 }
 fn precedence_map(token_kind: &TokenKind) -> PrecedenceLevel {
     match token_kind {
@@ -28,6 +29,7 @@ fn precedence_map(token_kind: &TokenKind) -> PrecedenceLevel {
         TokenKind::Plus | TokenKind::Minus => PrecedenceLevel::Sum,
         TokenKind::Slash | TokenKind::Asterisk => PrecedenceLevel::Product,
         TokenKind::LParen => PrecedenceLevel::Call,
+        TokenKind::LBracket => PrecedenceLevel::Index,
         _ => PrecedenceLevel::Lowest,
     }
 }
@@ -75,6 +77,7 @@ impl Parser {
         parser.register_infix(TokenKind::LT, Self::parse_infix_expression);
         parser.register_infix(TokenKind::GT, Self::parse_infix_expression);
         parser.register_infix(TokenKind::LParen, Self::parse_call_expression);
+        parser.register_infix(TokenKind::LBracket, Self::parse_index_expression);
 
         parser.next_token();
         parser.next_token();
@@ -415,7 +418,7 @@ impl Parser {
     }
 
     fn parse_array_literal(&mut self) -> Option<ExpressionNode> {
-        let mut array_literal = ArrayLiteral {
+        let array_literal = ArrayLiteral {
             token: self.cur_token.clone(),
             elements: self.parse_expression_list(TokenKind::RBracket),
         };
@@ -468,6 +471,29 @@ impl Parser {
         exp.arguments = self.parse_expression_list(TokenKind::RParen);
 
         Some(ExpressionNode::Call(exp))
+    }
+
+    fn parse_index_expression(&mut self, left: ExpressionNode) -> Option<ExpressionNode> {
+        self.next_token(); //consume the [
+
+        let mut exp = IndexExpression {
+            token: self.cur_token.clone(),
+            left: Box::new(left),
+            index: Default::default(),
+        };
+
+        self.next_token();
+
+        exp.index = Box::new(
+            self.parse_expression(PrecedenceLevel::Lowest)
+                .expect("error parsing index expression"),
+        );
+
+        if !self.expect_peek(TokenKind::RBracket) {
+            return None;
+        }
+
+        Some(ExpressionNode::Index(exp))
     }
 
     fn parse_expression_list(&mut self, end_token: TokenKind) -> Vec<ExpressionNode> {
@@ -862,6 +888,14 @@ mod tests {
             (
                 "add(a + b + c * d / f + g)",
                 "add((((a + b) + ((c * d) / f)) + g))",
+            ),
+            (
+                "a * [1, 2, 3, 4][b * c] * d",
+                "((a * ([1, 2, 3, 4][(b * c)])) * d)",
+            ),
+            (
+                "add(a * b[2], b[1], 2 * [1, 2][1])",
+                "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))",
             ),
         ];
 
@@ -1402,6 +1436,42 @@ mod tests {
                         );
                     }
                     other => panic!("exp not ArrayLiteral. got={:?}", other),
+                }
+            }
+            other => panic!("stmt not ExpressionStatement. got={:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parsing_index_expressions() {
+        let input = "myArray[1 + 1]";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        match &program.statements[0] {
+            StatementNode::Expression(exp_stmt) => {
+                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                match &exp_stmt
+                    .expression
+                    .as_ref()
+                    .expect("Error parsing expression for index expression")
+                {
+                    ExpressionNode::Index(index_exp) => {
+                        test_identifier(&index_exp.left, "myArray".to_string());
+                        test_infix_expression(
+                            &index_exp.index,
+                            Box::new(1),
+                            "+".to_string(),
+                            Box::new(1),
+                        );
+                    }
+                    other => panic!("exp not IndexExpression. got={:?}", other),
                 }
             }
             other => panic!("stmt not ExpressionStatement. got={:?}", other),

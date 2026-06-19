@@ -48,6 +48,7 @@ pub enum ExpressionNode {
     Call(CallExpression),
     StringExp(StringLiteral),
     Array(ArrayLiteral),
+    Index(IndexExpression),
 }
 
 impl Node for ExpressionNode {
@@ -63,6 +64,7 @@ impl Node for ExpressionNode {
             Self::Call(call_expression) => call_expression.token_literal(),
             Self::StringExp(string_literal) => string_literal.token_literal(),
             Self::Array(array_literal) => array_literal.token_literal(),
+            Self::Index(idx_exp) => idx_exp.token_literal(),
             Self::None => String::new(),
         };
     }
@@ -79,6 +81,7 @@ impl Node for ExpressionNode {
             Self::Call(call_expression) => call_expression.print_string(),
             Self::StringExp(string_literal) => string_literal.print_string(),
             Self::Array(array_literal) => array_literal.print_string(),
+            Self::Index(idx_exp) => idx_exp.print_string(),
             Self::None => String::new(),
         };
     }
@@ -399,6 +402,28 @@ impl Node for ArrayLiteral {
         out.push_str(elements.join(", ").as_str());
 
         out.push_str("]");
+        out
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IndexExpression {
+    pub token: Token,
+    pub left: Box<ExpressionNode>,
+    pub index: Box<ExpressionNode>,
+}
+
+impl Node for IndexExpression {
+    fn token_literal(&self) -> String {
+        return self.token.literal.clone();
+    }
+    fn print_string(&self) -> String {
+        let mut out = String::new();
+        out.push_str("(");
+        out.push_str(self.left.print_string().as_str());
+        out.push_str("[");
+        out.push_str(self.index.print_string().as_str());
+        out.push_str("])");
         out
     }
 }
