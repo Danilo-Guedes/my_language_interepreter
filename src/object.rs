@@ -19,20 +19,22 @@ pub enum Object {
     Func(Function),
     StringObj(String),
     Builtin(BuiltinFunction),
+    Array(Vec<Object>),
     Null,
 }
 
 impl Object {
     pub fn object_type(&self) -> String {
         match self {
-            Object::Integer(_) => String::from("INTEGER"),
-            Object::Boolean(_) => String::from("BOOLEAN"),
-            Object::ReturnValue(_) => String::from("RETURN_VALUE"),
-            Object::Error(_) => String::from("ERROR"),
-            Object::Func(_) => String::from("FUNCTION"),
-            Object::StringObj(_) => String::from("STRING"),
-            Object::Builtin(_) => String::from("BUILTIN"),
-            Object::Null => String::from("NULL"),
+            Self::Integer(_) => String::from("INTEGER"),
+            Self::Boolean(_) => String::from("BOOLEAN"),
+            Self::ReturnValue(_) => String::from("RETURN_VALUE"),
+            Self::Error(_) => String::from("ERROR"),
+            Self::Func(_) => String::from("FUNCTION"),
+            Self::StringObj(_) => String::from("STRING"),
+            Self::Builtin(_) => String::from("BUILTIN"),
+            Self::Array(_) => String::from("ARRAY"),
+            Self::Null => String::from("NULL"),
         }
     }
 }
@@ -40,11 +42,11 @@ impl Object {
 impl Display for Object {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Object::Integer(value) => write!(f, "{}", value),
-            Object::Boolean(value) => write!(f, "{}", value),
-            Object::ReturnValue(ret_value) => write!(f, "{}", ret_value),
-            Object::Error(message) => write!(f, "ERROR: {}", message),
-            Object::Func(function) => {
+            Self::Integer(value) => write!(f, "{}", value),
+            Self::Boolean(value) => write!(f, "{}", value),
+            Self::ReturnValue(ret_value) => write!(f, "{}", ret_value),
+            Self::Error(message) => write!(f, "ERROR: {}", message),
+            Self::Func(function) => {
                 let mut out = String::from("");
                 let mut params = vec![];
 
@@ -60,9 +62,19 @@ impl Display for Object {
 
                 write!(f, "{}", out)
             }
-            Object::StringObj(str) => write!(f, "{}", str),
-            Object::Builtin(_) => write!(f, "builtin function"),
-            Object::Null => write!(f, "null"),
+            Self::StringObj(str) => write!(f, "{}", str),
+            Self::Builtin(_) => write!(f, "builtin function"),
+            Self::Array(elements) => {
+                let mut out = String::from("[");
+                let mut elems = vec![];
+                for el in elements {
+                    elems.push(format!("{}", el));
+                }
+                out.push_str(&elems.join(", "));
+                out.push_str("]");
+                write!(f, "{}", out)
+            }
+            Self::Null => write!(f, "null"),
         }
     }
 }

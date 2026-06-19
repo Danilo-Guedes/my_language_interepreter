@@ -107,6 +107,14 @@ impl Evaluator {
                 ExpressionNode::StringExp(string_literal) => {
                     Object::StringObj(string_literal.value)
                 }
+                ExpressionNode::Array(array_literal) => {
+                    let elements = self.eval_expressions(array_literal.elements);
+
+                    if elements.len() == 1 && Self::is_error(&elements[0]) {
+                        return elements[0].clone();
+                    }
+                    Object::Array(elements)
+                }
                 _ => NULL,
             };
         }
@@ -573,6 +581,26 @@ mod test {
                     None => panic!("unsupported test type"),
                 },
             }
+        }
+    }
+
+    #[test]
+    fn test_array_literals() {
+        let input = "[1, 2 * 2, 3 + 3]";
+        let evaluated = test_eval(input);
+        match evaluated {
+            Object::Array(elements) => {
+                assert_eq!(
+                    elements.len(),
+                    3,
+                    "array has wrong length, got={}",
+                    elements.len()
+                );
+                test_integer_object(elements[0].clone(), 1);
+                test_integer_object(elements[1].clone(), 4);
+                test_integer_object(elements[2].clone(), 6);
+            }
+            other => panic!("object is not Array, got {:?}", other),
         }
     }
 
