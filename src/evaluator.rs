@@ -602,6 +602,26 @@ mod test {
                 r#"len("one", "two")"#,
                 Box::new(String::from("wrong number of arguments. got=2, want=1")),
             ),
+            (
+                r#"len([1, 2, 3])"#,
+                Box::new(3_i64),
+            ),
+            (
+                r#"first([1, 2, 3])"#,
+                Box::new(1_i64),
+            ),
+            (
+                r#"last([1, 2, 3])"#,
+                Box::new(3_i64),
+            ),
+            (
+                r#"rest([1, 2, 3])"#,
+                Box::new(vec![2_i64, 3_i64]),
+            ),
+            (
+                r#"push([1, 2, 3], 4)"#,
+                Box::new(vec![1_i64, 2_i64, 3_i64, 4_i64]),
+            ),
         ];
 
         for test in tests {
@@ -612,9 +632,25 @@ mod test {
                 None => match test.1.downcast_ref::<String>() {
                     Some(expected) => match evaluated {
                         Object::Error(err) => assert_eq!(err, *expected),
+
                         other => panic!("object is not Error, got {:?}", other),
                     },
-                    None => panic!("unsupported test type"),
+                    None => match test.1.downcast_ref::<Vec<i64>>() {
+                        Some(expected) => match evaluated {
+                            Object::Array(arr) => {
+                                let arr_values: Vec<i64> = arr
+                                    .into_iter()
+                                    .map(|obj| match obj {
+                                        Object::Integer(value) => value,
+                                        _ => panic!("array element is not Integer, got {:?}", obj),
+                                    })
+                                    .collect();
+                                assert_eq!(arr_values, *expected);
+                            }
+                            other => panic!("object is not Array, got {:?}", other),
+                        },
+                        None => panic!("unsupported test type"),
+                    },
                 },
             }
         }
