@@ -115,8 +115,44 @@ impl Evaluator {
                     }
                     Object::Array(elements)
                 }
+                ExpressionNode::Index(index_exp) => {
+                    let left = self.eval_expression(Some(*index_exp.left));
+                    if Self::is_error(&left) {
+                        return left;
+                    }
+
+                    let index = self.eval_expression(Some(*index_exp.index));
+                    if Self::is_error(&index) {
+                        return index;
+                    }
+
+                    self.eval_index_expression(left, index)
+                }
                 _ => NULL,
             };
+        }
+        NULL
+    }
+
+    fn eval_index_expression(&self, left: Object, index: Object) -> Object {
+        if left.object_type() == "ARRAY" && index.object_type() == "INTEGER" {
+            return Self::eval_array_index_expression(left, index);
+        }
+        Object::Error(format!(
+            "index operator not supported: {}",
+            left.object_type()
+        ))
+    }
+
+    fn eval_array_index_expression(array: Object, index: Object) -> Object {
+        if let Object::Array(arr) = array {
+            if let Object::Integer(idx) = index {
+                let max = (arr.len()  - 1) as i64;
+                if idx < 0 || idx > max {
+                    return NULL;
+                }
+                return arr[idx as usize].clone();
+            }
         }
         NULL
     }
@@ -309,7 +345,7 @@ mod test {
 
     use crate::{ast::Node, lexer::Lexer, object::Object, parser::Parser};
 
-    use super::Evaluator;
+    use super::{Evaluator, NULL};
 
     #[test]
     fn test_eval_integer_expression() {
@@ -601,6 +637,36 @@ mod test {
                 test_integer_object(elements[2].clone(), 6);
             }
             other => panic!("object is not Array, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_array_index_expressions() {
+        let tests: Vec<(&str, Box<dyn any::Any>)> = vec![
+            ("[1, 2, 3][0]", Box::new(1_i64)),
+            ("[1, 2, 3][1]", Box::new(2_i64)),
+            ("[1, 2, 3][2]", Box::new(3_i64)),
+            ("let i = 0; [1][i];", Box::new(1_i64)),
+            ("[1, 2, 3][1 + 1];", Box::new(3_i64)),
+            ("let myArray = [1, 2, 3]; myArray[2];", Box::new(3_i64)),
+            (
+                "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2] ;",
+                Box::new(6_i64),
+            ),
+            (
+                "let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]",
+                Box::new(2_i64),
+            ),
+            ("[1, 2, 3][3]", Box::new(NULL)), // HERE MOST LANGUAGES WOULD ERROR, WE CHOOSE TO RETURN NULL BY DESIGN SIMPLICITY
+            ("[1, 2, 3][-1]", Box::new(NULL)),
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.0);
+            match test.1.downcast_ref::<i64>() {
+                Some(expected) => test_integer_object(evaluated, *expected),
+                None => test_null_object(evaluated),
+            }
         }
     }
 
