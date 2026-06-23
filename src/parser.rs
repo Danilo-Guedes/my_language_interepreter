@@ -2,8 +2,9 @@ use std::collections::HashMap;
 
 use crate::ast::{
     ArrayLiteral, BlockStatement, Boolean, CallExpression, ExpressionNode, ExpressionStatement,
-    FunctionLiteral, Identifier, IfExpression, IndexExpression, InfixExpression, IntegerLiteral,
-    LetStatement, PrefixExpression, Program, ReturnStatement, StatementNode, StringLiteral,
+    FunctionLiteral, HashLiteral, Identifier, IfExpression, IndexExpression, InfixExpression,
+    IntegerLiteral, LetStatement, PrefixExpression, Program, ReturnStatement, StatementNode,
+    StringLiteral,
 };
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
@@ -66,6 +67,7 @@ impl Parser {
         parser.register_prefix(TokenKind::Function, Self::parse_function_literal);
         parser.register_prefix(TokenKind::String, Self::parse_string_literal);
         parser.register_prefix(TokenKind::LBracket, Self::parse_array_literal);
+        parser.register_prefix(TokenKind::LBrace, Self::parse_hash_literal);
 
         //INFIX
         parser.register_infix(TokenKind::Plus, Self::parse_infix_expression);
@@ -424,6 +426,43 @@ impl Parser {
         };
 
         Some(ExpressionNode::Array(array_literal))
+    }
+
+    fn parse_hash_literal(&mut self) -> Option<ExpressionNode> {
+        let mut hash = HashLiteral {
+            token: self.cur_token.clone(),
+            pairs: Default::default(),
+        };
+
+        while !self.peek_token_is(&TokenKind::RBrace) {
+            self.next_token();
+
+            let key = self
+                .parse_expression(PrecedenceLevel::Lowest)
+                .expect("error parsing hash key expression");
+
+            if !self.expect_peek(TokenKind::Colon) {
+                return None;
+            }
+
+            self.next_token();
+
+            let value = self
+                .parse_expression(PrecedenceLevel::Lowest)
+                .expect("error parsing hash value expression");
+
+            hash.pairs.push((key, value));
+
+            if !self.peek_token_is(&TokenKind::RBrace) && !self.expect_peek(TokenKind::Comma) {
+                return None;
+            }
+        }
+
+        if !self.expect_peek(TokenKind::RBrace) {
+            return None;
+        }
+
+        Some(ExpressionNode::Hash(hash))
     }
 
     fn parse_function_parameters(&mut self) -> Option<Vec<Identifier>> {
