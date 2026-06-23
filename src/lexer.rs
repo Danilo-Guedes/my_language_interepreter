@@ -46,6 +46,7 @@ impl Lexer {
                 }
             }
             ';' => Lexer::new_token(TokenKind::Semicolon, self.ch),
+            ':' => Lexer::new_token(TokenKind::Colon, self.ch),
             '(' => Lexer::new_token(TokenKind::LParen, self.ch),
             ')' => Lexer::new_token(TokenKind::RParen, self.ch),
             ',' => Lexer::new_token(TokenKind::Comma, self.ch),
@@ -164,69 +165,31 @@ mod test {
     use super::Lexer;
 
     #[test]
-    fn test_next_token_simple() {
-        let input: &str = "=+(){},;";
-
-        let expected: Vec<Token> = vec![
-            Token {
-                kind: TokenKind::Assign,
-                literal: "=".to_string(),
-            },
-            Token {
-                kind: TokenKind::Plus,
-                literal: "+".to_string(),
-            },
-            Token {
-                kind: TokenKind::LParen,
-                literal: "(".to_string(),
-            },
-            Token {
-                kind: TokenKind::RParen,
-                literal: ")".to_string(),
-            },
-            Token {
-                kind: TokenKind::LBrace,
-                literal: "{".to_string(),
-            },
-            Token {
-                kind: TokenKind::RBrace,
-                literal: "}".to_string(),
-            },
-            Token {
-                kind: TokenKind::Comma,
-                literal: ",".to_string(),
-            },
-        ];
-
-        let mut lexer = Lexer::new(input);
-
-        for (idx, token) in expected.into_iter().enumerate() {
-            let received_token = lexer.next_token();
-            assert_eq!(
-                token.kind, received_token.kind,
-                "tests[{}] - token type wrong. expected={}, got={}",
-                idx, token.kind, received_token.kind
-            );
-
-            assert_eq!(
-                token.literal, received_token.literal,
-                "tests[{}] - literal wrong. expected={}, got={}",
-                idx, token.literal, received_token.literal
-            );
-        }
-    }
-
-    #[test]
-    fn test_next_token_with_language() {
+    fn test_next_token() {
         let input: &str = r#"
-                let five = 5;
-                let ten = 10;
+            let five = 5;
+            let ten = 10;
 
-                let add = fn(x, y) {
-                    x + y;
-                };
+            let add = fn(x, y) {
+                x + y;
+            };
 
-                let result = add(five, ten);
+            let result = add(five, ten);
+            !-/*5;
+            5 < 10 > 5;
+
+            if (5 < 10) {
+                return true;
+            } else {
+                return false;
+            }
+
+            10 == 10;
+            10 != 9;
+            "foobar"
+            "foo bar"
+            [1, 2];
+            {"foo": "bar"}
             "#;
 
         let expected: Vec<Token> = vec![
@@ -375,38 +338,6 @@ mod test {
                 literal: ";".to_string(),
             },
             Token {
-                kind: TokenKind::EOF,
-                literal: "".to_string(),
-            },
-        ];
-
-        let mut lexer = Lexer::new(input);
-
-        for (idx, token) in expected.into_iter().enumerate() {
-            let received_token = lexer.next_token();
-            assert_eq!(
-                token.kind, received_token.kind,
-                "tests[{}] - token type wrong. expected={}, got={}",
-                idx, token.kind, received_token.kind
-            );
-
-            assert_eq!(
-                token.literal, received_token.literal,
-                "tests[{}] - literal wrong. expected={}, got={}",
-                idx, token.literal, received_token.literal
-            );
-        }
-    }
-
-    #[test]
-    fn test_next_token_with_special_characters() {
-        let input: &str = r#"
-               !-/*5;
-               5 < 10 > 5;
-            "#;
-
-        let expected: Vec<Token> = vec![
-            Token {
                 kind: TokenKind::Bang,
                 literal: "!".to_string(),
             },
@@ -455,41 +386,6 @@ mod test {
                 literal: ";".to_string(),
             },
             Token {
-                kind: TokenKind::EOF,
-                literal: "".to_string(),
-            },
-        ];
-
-        let mut lexer = Lexer::new(input);
-
-        for (idx, token) in expected.into_iter().enumerate() {
-            let received_token = lexer.next_token();
-            assert_eq!(
-                token.kind, received_token.kind,
-                "tests[{}] - token type wrong. expected={}, got={}",
-                idx, token.kind, received_token.kind
-            );
-
-            assert_eq!(
-                token.literal, received_token.literal,
-                "tests[{}] - literal wrong. expected={}, got={}",
-                idx, token.literal, received_token.literal
-            );
-        }
-    }
-
-    #[test]
-    fn test_next_token_with_keywords() {
-        let input: &str = r#"
-              if (5 < 0) {
-              return true;
-              } else {
-               return false;
-               }
-            "#;
-
-        let expected: Vec<Token> = vec![
-            Token {
                 kind: TokenKind::If,
                 literal: "if".to_string(),
             },
@@ -507,7 +403,7 @@ mod test {
             },
             Token {
                 kind: TokenKind::Int,
-                literal: "0".to_string(),
+                literal: "10".to_string(),
             },
             Token {
                 kind: TokenKind::RParen,
@@ -558,38 +454,6 @@ mod test {
                 literal: "}".to_string(),
             },
             Token {
-                kind: TokenKind::EOF,
-                literal: "".to_string(),
-            },
-        ];
-
-        let mut lexer = Lexer::new(input);
-
-        for (idx, token) in expected.into_iter().enumerate() {
-            let received_token = lexer.next_token();
-            assert_eq!(
-                token.kind, received_token.kind,
-                "tests[{}] - token type wrong. expected={}, got={}",
-                idx, token.kind, received_token.kind
-            );
-
-            assert_eq!(
-                token.literal, received_token.literal,
-                "tests[{}] - literal wrong. expected={}, got={}",
-                idx, token.literal, received_token.literal
-            );
-        }
-    }
-
-    #[test]
-    fn test_next_token_with_equality_signs() {
-        let input: &str = r#"
-            10 == 10;
-            10 != 9;
-            "#;
-
-        let expected: Vec<Token> = vec![
-            Token {
                 kind: TokenKind::Int,
                 literal: "10".to_string(),
             },
@@ -622,38 +486,6 @@ mod test {
                 literal: ";".to_string(),
             },
             Token {
-                kind: TokenKind::EOF,
-                literal: "".to_string(),
-            },
-        ];
-
-        let mut lexer = Lexer::new(input);
-
-        for (idx, token) in expected.into_iter().enumerate() {
-            let received_token = lexer.next_token();
-            assert_eq!(
-                token.kind, received_token.kind,
-                "tests[{}] - token type wrong. expected={}, got={}",
-                idx, token.kind, received_token.kind
-            );
-
-            assert_eq!(
-                token.literal, received_token.literal,
-                "tests[{}] - literal wrong. expected={}, got={}",
-                idx, token.literal, received_token.literal
-            );
-        }
-    }
-
-    #[test]
-    fn test_next_token_with_string() {
-        let input: &str = r#"
-            "foobar"
-            "foo bar"
-            "#;
-
-        let expected: Vec<Token> = vec![
-            Token {
                 kind: TokenKind::String,
                 literal: "foobar".to_string(),
             },
@@ -661,37 +493,6 @@ mod test {
                 kind: TokenKind::String,
                 literal: "foo bar".to_string(),
             },
-            Token {
-                kind: TokenKind::EOF,
-                literal: "".to_string(),
-            },
-        ];
-
-        let mut lexer = Lexer::new(input);
-
-        for (idx, token) in expected.into_iter().enumerate() {
-            let received_token = lexer.next_token();
-            assert_eq!(
-                token.kind, received_token.kind,
-                "tests[{}] - token type wrong. expected={}, got={}",
-                idx, token.kind, received_token.kind
-            );
-
-            assert_eq!(
-                token.literal, received_token.literal,
-                "tests[{}] - literal wrong. expected={}, got={}",
-                idx, token.literal, received_token.literal
-            );
-        }
-    }
-
-    #[test]
-    fn test_next_token_with_arrays() {
-        let input: &str = r#"
-            [1, 2];
-            "#;
-
-        let expected: Vec<Token> = vec![
             Token {
                 kind: TokenKind::LBracket,
                 literal: "[".to_string(),
@@ -715,6 +516,26 @@ mod test {
             Token {
                 kind: TokenKind::Semicolon,
                 literal: ";".to_string(),
+            },
+            Token {
+                kind: TokenKind::LBrace,
+                literal: "{".to_string(),
+            },
+            Token {
+                kind: TokenKind::String,
+                literal: "foo".to_string(),
+            },
+            Token {
+                kind: TokenKind::Colon,
+                literal: ":".to_string(),
+            },
+            Token {
+                kind: TokenKind::String,
+                literal: "bar".to_string(),
+            },
+            Token {
+                kind: TokenKind::RBrace,
+                literal: "}".to_string(),
             },
             Token {
                 kind: TokenKind::EOF,
