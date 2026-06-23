@@ -1478,6 +1478,157 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_parsing_hash_literals_string_keys() {
+        let input = r#"{"one": 1, "two": 2, "three": 3}"#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        match &program.statements[0] {
+            StatementNode::Expression(exp_stmt) => {
+                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                match &exp_stmt
+                    .expression
+                    .as_ref()
+                    .expect("Error parsing expression for hash literal")
+                {
+                    ExpressionNode::Hash(hash_literal) => {
+                        assert_eq!(
+                            hash_literal.pairs.len(),
+                            3,
+                            "hash_literal.pairs.len() wrong. got={}",
+                            hash_literal.pairs.len()
+                        );
+
+                        let expected = vec![
+                            ("one".to_string(), 1),
+                            ("two".to_string(), 2),
+                            ("three".to_string(), 3),
+                        ];
+                        let mut curr_idx: usize = 0;
+
+                        for (_, value) in &hash_literal.pairs {
+                            let expected_value = expected[curr_idx].1;
+                            test_integer_literal(value, expected_value);
+                            curr_idx += 1;
+                        }
+                    }
+                    other => panic!("exp not HashLiteral. got={:?}", other),
+                }
+            }
+            other => panic!("stmt not ExpressionStatement. got={:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parsing_empty_hash_literal() {
+        let input = "{}";
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        match &program.statements[0] {
+            StatementNode::Expression(exp_stmt) => {
+                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                match &exp_stmt
+                    .expression
+                    .as_ref()
+                    .expect("Error parsing expression for hash literal")
+                {
+                    ExpressionNode::Hash(hash_literal) => {
+                        assert_eq!(
+                            hash_literal.pairs.len(),
+                            0,
+                            "hash_literal.pairs.len() wrong. got={}",
+                            hash_literal.pairs.len()
+                        );
+                    }
+                    other => panic!("exp not HashLiteral. got={:?}", other),
+                }
+            }
+            other => panic!("stmt not ExpressionStatement. got={:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parsing_hash_literals_with_expressions() {
+        let input = r#"{ "one": 0 + 1, "two": 10 - 8, "three": 15 / 5 }"#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program().unwrap();
+
+        check_parser_errors(&parser);
+
+        match &program.statements[0] {
+            StatementNode::Expression(exp_stmt) => {
+                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+
+                match &exp_stmt
+                    .expression
+                    .as_ref()
+                    .expect("Error parsing expression for hash literal")
+                {
+                    ExpressionNode::Hash(hash_literal) => {
+                        assert_eq!(
+                            hash_literal.pairs.len(),
+                            3,
+                            "hash_literal.pairs.len() wrong. got={}",
+                            hash_literal.pairs.len()
+                        );
+
+                        let expected = vec![
+                            ("one".to_string(), (0, "+", 1)),
+                            ("two".to_string(), (10, "-", 8)),
+                            ("three".to_string(), (15, "/", 5)),
+                        ];
+                        let mut curr_idx: usize = 0;
+
+                        for (_, value) in &hash_literal.pairs {
+                            let expected_value = &expected[curr_idx];
+                            test_func_for_key(
+                                value,
+                                expected_value.1 .0,
+                                expected_value.1 .1,
+                                expected_value.1 .2,
+                            );
+                            curr_idx += 1;
+                        }
+                    }
+                    other => panic!("exp not HashLiteral. got={:?}", other),
+                }
+            }
+            other => panic!("stmt not ExpressionStatement. got={:?}", other),
+        }
+    }
+
+    fn test_func_for_key(exp: &ExpressionNode, left: i64, operator: &str, right: i64) {
+        match exp {
+            ExpressionNode::Infix(infix_exp) => {
+                test_integer_literal(&infix_exp.left, left);
+                assert_eq!(
+                    infix_exp.operator, operator,
+                    "infix_exp.operator is not '{}'. got={}",
+                    operator, infix_exp.operator
+                );
+                test_integer_literal(&infix_exp.right, right);
+            }
+            other => {
+                panic!("exp not Infix. got={:?}", other);
+            }
+        }
+    }
+
     pub fn check_parser_errors(parser: &Parser) {
         let errors = parser.errors();
         if errors.len() == 0 {
