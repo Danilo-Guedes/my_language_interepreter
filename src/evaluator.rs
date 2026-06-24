@@ -343,7 +343,13 @@ impl Evaluator {
 mod test {
     use std::any;
 
-    use crate::{ast::Node, lexer::Lexer, object::Object, parser::Parser};
+    use crate::{
+        ast::Node,
+        evaluator::{FALSE, TRUE},
+        lexer::Lexer,
+        object::{Hashable, Object},
+        parser::Parser,
+    };
 
     use super::{Evaluator, NULL};
 
@@ -691,6 +697,53 @@ mod test {
                 Some(expected) => test_integer_object(evaluated, *expected),
                 None => test_null_object(evaluated),
             }
+        }
+    }
+
+    #[test]
+    fn test_hash_literals() {
+        let input = r#"let two = "two";
+        {
+        "one": 10 -9,
+        "two": 1 + 1,
+        "thr" + "ee": 6/2,
+        4: 4,
+        true: 5,
+        false: 6,
+        }
+            
+            "#;
+
+        let evaluated = test_eval(input);
+
+        match evaluated {
+            Object::HashObj(hash) => {
+                let expected = vec![
+                    (Object::StringObj("one".to_string()).hash_key(), 1),
+                    (Object::StringObj("two".to_string()).hash_key(), 2),
+                    (Object::StringObj("three".to_string()).hash_key(), 3),
+                    (Object::Integer(4).hash_key(), 4),
+                    (TRUE.hash_key(), 5),
+                    (FALSE.hash_key(), 6),
+                ];
+
+                assert_eq!(
+                    hash.pairs.len(),
+                    expected.len(),
+                    "hash object has wrong number of pairs. got={}, expected={}",
+                    hash.pairs.len(),
+                    expected.len()
+                );
+
+                for (expected_key, expected_value) in expected {
+                    let pair = match hash.pairs.get(&expected_key.unwrap()) {
+                        Some(hash_pair) => hash_pair,
+                        None => panic!("no pair for given key in Pairs"),
+                    };
+                    test_integer_object(pair.value.clone(), expected_value);
+                }
+            }
+            other => panic!("object is not Hash, got {:?}", other),
         }
     }
 

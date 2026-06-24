@@ -148,7 +148,7 @@ pub struct Function {
     pub env: Environment,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct HashKey {
     pub object_type: String,
     pub value: i64,
