@@ -9,7 +9,7 @@ impl Builtins {
             (String::from("first"), Object::Builtin(b_first)),
             (String::from("last"), Object::Builtin(b_last)),
             (String::from("rest"), Object::Builtin(b_rest)),
-               (String::from("push"), Object::Builtin(b_push)),
+            (String::from("push"), Object::Builtin(b_push)),
         ]
     }
 }

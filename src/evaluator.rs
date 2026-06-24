@@ -147,7 +147,7 @@ impl Evaluator {
     fn eval_array_index_expression(array: Object, index: Object) -> Object {
         if let Object::Array(arr) = array {
             if let Object::Integer(idx) = index {
-                let max = (arr.len()  - 1) as i64;
+                let max = (arr.len() - 1) as i64;
                 if idx < 0 || idx > max {
                     return NULL;
                 }
@@ -602,22 +602,10 @@ mod test {
                 r#"len("one", "two")"#,
                 Box::new(String::from("wrong number of arguments. got=2, want=1")),
             ),
-            (
-                r#"len([1, 2, 3])"#,
-                Box::new(3_i64),
-            ),
-            (
-                r#"first([1, 2, 3])"#,
-                Box::new(1_i64),
-            ),
-            (
-                r#"last([1, 2, 3])"#,
-                Box::new(3_i64),
-            ),
-            (
-                r#"rest([1, 2, 3])"#,
-                Box::new(vec![2_i64, 3_i64]),
-            ),
+            (r#"len([1, 2, 3])"#, Box::new(3_i64)),
+            (r#"first([1, 2, 3])"#, Box::new(1_i64)),
+            (r#"last([1, 2, 3])"#, Box::new(3_i64)),
+            (r#"rest([1, 2, 3])"#, Box::new(vec![2_i64, 3_i64])),
             (
                 r#"push([1, 2, 3], 4)"#,
                 Box::new(vec![1_i64, 2_i64, 3_i64, 4_i64]),
