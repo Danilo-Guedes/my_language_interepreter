@@ -11,6 +11,10 @@ use crate::{
 
 pub type BuiltinFunction = fn(Vec<Object>) -> Object;
 
+pub const TRUE: Object = Object::Boolean(true);
+pub const FALSE: Object = Object::Boolean(false);
+pub const NULL: Object = Object::Null;
+
 #[derive(Debug, Clone)]
 pub enum Object {
     Integer(i64),

@@ -1,4 +1,4 @@
-use crate::{evaluator::NULL, object::Object};
+use crate::object::{Object, NULL};
 
 pub struct Builtins;
 

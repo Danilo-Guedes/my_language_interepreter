@@ -1,15 +1,12 @@
 // use std::{cell::RefCell, rc::Rc};
 
-use std::ops::Deref;
+use std::{collections::HashMap, ops::Deref};
 
 use crate::{
-    ast::{BlockStatement, ExpressionNode, Identifier, IfExpression, Program, StatementNode},
-    object::{Environment, Function, Object},
+    ast::{BlockStatement, ExpressionNode, Identifier, IfExpression, Program, StatementNode}, object::{
+        Environment, FALSE, Function, HashPair, HashStruct, Hashable, NULL, Object, TRUE,
+    },
 };
-
-const TRUE: Object = Object::Boolean(true);
-const FALSE: Object = Object::Boolean(false);
-pub const NULL: Object = Object::Null;
 
 pub struct Evaluator {
     env: Environment,
@@ -127,6 +124,26 @@ impl Evaluator {
                     }
 
                     self.eval_index_expression(left, index)
+                }
+                ExpressionNode::Hash(hash_literal) => {
+                    let mut pairs = HashMap::new();
+
+                    for (key_node, value_node) in hash_literal.pairs {
+                        let key = self.eval_expression(Some(key_node));
+                        if Self::is_error(&key) {
+                            return key;
+                        }
+                        let value = self.eval_expression(Some(value_node));
+                        if Self::is_error(&value) {
+                            return value;
+                        }
+                        let hash_key = match key.hash_key() {
+                            Ok(hash_key) => hash_key,
+                            Err(err) => return Object::Error(err),
+                        };
+                        pairs.insert(hash_key, HashPair { key, value });
+                    }
+                    Object::HashObj(HashStruct { pairs })
                 }
                 _ => NULL,
             };
@@ -345,13 +362,12 @@ mod test {
 
     use crate::{
         ast::Node,
-        evaluator::{FALSE, TRUE},
         lexer::Lexer,
-        object::{Hashable, Object},
+        object::{Hashable, Object, FALSE, NULL, TRUE},
         parser::Parser,
     };
 
-    use super::{Evaluator, NULL};
+    use super::Evaluator;
 
     #[test]
     fn test_eval_integer_expression() {
