@@ -3,9 +3,8 @@
 use std::{collections::HashMap, ops::Deref};
 
 use crate::{
-    ast::{BlockStatement, ExpressionNode, Identifier, IfExpression, Program, StatementNode}, object::{
-        Environment, FALSE, Function, HashPair, HashStruct, Hashable, NULL, Object, TRUE,
-    },
+    ast::{BlockStatement, ExpressionNode, Identifier, IfExpression, Program, StatementNode},
+    object::{Environment, Function, HashPair, HashStruct, Hashable, Object, FALSE, NULL, TRUE},
 };
 
 pub struct Evaluator {
@@ -155,10 +154,37 @@ impl Evaluator {
         if left.object_type() == "ARRAY" && index.object_type() == "INTEGER" {
             return Self::eval_array_index_expression(left, index);
         }
+
+        if left.object_type() == "HASH" {
+            return Self::eval_hash_index_expression(left, index);
+        }
         Object::Error(format!(
             "index operator not supported: {}",
             left.object_type()
         ))
+    }
+
+    fn eval_hash_index_expression(hash: Object, index: Object) -> Object {
+        match hash {
+            Object::HashObj(hash_struct) => {
+                let key = match index.hash_key() {
+                    Ok(hash_key) => hash_key,
+                    Err(err) => return Object::Error(err),
+                };
+
+                let pair = match hash_struct.pairs.get(&key) {
+                    Some(hash_pair) => hash_pair,
+                    None => return NULL,
+                };
+
+                pair.value.clone()
+            }
+
+            _ => Object::Error(format!(
+                "index operator not supported: {}",
+                hash.object_type()
+            )),
+        }
     }
 
     fn eval_array_index_expression(array: Object, index: Object) -> Object {
@@ -501,6 +527,10 @@ mod test {
             ),
             ("foobar", "identifier not found: foobar"),
             (r#""Hello" - "World""#, "unknown operator: STRING - STRING"),
+            (
+                r#"{"name": "Monkey"}[fn(x) { x }];"#,
+                "unusable as hash key: FUNCTION",
+            ),
         ];
 
         for test in tests {
@@ -760,6 +790,27 @@ mod test {
                 }
             }
             other => panic!("object is not Hash, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_hash_index_expressions() {
+        let tests: Vec<(&str, Box<dyn any::Any>)> = vec![
+            (r#"{"foo": 5}["foo"]"#, Box::new(5_i64)),
+            (r#"{"foo": 5}["bar"]"#, Box::new(NULL)),
+            (r#"let key = "foo"; {"foo": 5}[key]"#, Box::new(5_i64)),
+            (r#"{}["foo"]"#, Box::new(NULL)),
+            (r#"{5: 5}[5]"#, Box::new(5_i64)),
+            (r#"{true: 5}[true]"#, Box::new(5_i64)),
+            (r#"{false: 5}[false]"#, Box::new(5_i64)),
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.0);
+            match test.1.downcast_ref::<i64>() {
+                Some(expected) => test_integer_object(evaluated, *expected),
+                None => test_null_object(evaluated),
+            }
         }
     }
 
