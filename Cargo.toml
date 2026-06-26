@@ -1,5 +1,5 @@
 [package]
-name = "my_language_interepreter"
+name = "guedzlang"
 version = "0.1.0"
 edition = "2021"
 
