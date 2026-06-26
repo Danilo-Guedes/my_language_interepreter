@@ -22,7 +22,7 @@ pub fn start(stdin: Stdin, mut stdout: Stdout) {
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program().expect("Failed to parse program");
 
-        if parser.errors().len() != 0 {
+        if !parser.errors().is_empty() {
             print_parse_errors(&stdout, parser.errors());
             continue;
         }

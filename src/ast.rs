@@ -15,21 +15,21 @@ pub enum StatementNode {
 
 impl Node for StatementNode {
     fn token_literal(&self) -> String {
-        return match self {
+        match self {
             Self::Let(let_stmt) => let_stmt.token_literal(),
             Self::Return(return_stmt) => return_stmt.token_literal(),
             Self::Expression(expression_stmt) => expression_stmt.token_literal(),
             Self::Block(block_stmt) => block_stmt.token_literal(),
-        };
+        }
     }
 
     fn print_string(&self) -> String {
-        return match self {
+        match self {
             Self::Let(let_stmt) => let_stmt.print_string(),
             Self::Return(return_stmt) => return_stmt.print_string(),
             Self::Expression(expression_stmt) => expression_stmt.print_string(),
             Self::Block(block_stmt) => block_stmt.print_string(),
-        };
+        }
     }
 }
 
@@ -54,7 +54,7 @@ pub enum ExpressionNode {
 
 impl Node for ExpressionNode {
     fn token_literal(&self) -> String {
-        return match self {
+        match self {
             Self::IdentifierNode(identifirer) => identifirer.token_literal(),
             Self::Integer(integer) => integer.token_literal(),
             Self::Prefix(prefix_expression) => prefix_expression.token_literal(),
@@ -68,11 +68,11 @@ impl Node for ExpressionNode {
             Self::Index(idx_exp) => idx_exp.token_literal(),
             Self::Hash(hash_literal) => hash_literal.token_literal(),
             Self::None => String::new(),
-        };
+        }
     }
 
     fn print_string(&self) -> String {
-        return match self {
+        match self {
             Self::IdentifierNode(identifier) => identifier.print_string(),
             Self::Integer(integer) => integer.print_string(),
             Self::Prefix(prefix_expression) => prefix_expression.print_string(),
@@ -86,7 +86,7 @@ impl Node for ExpressionNode {
             Self::Index(idx_exp) => idx_exp.print_string(),
             Self::Hash(hash_literal) => hash_literal.print_string(),
             Self::None => String::new(),
-        };
+        }
     }
 }
 
@@ -96,7 +96,7 @@ pub struct Program {
 
 impl Node for Program {
     fn token_literal(&self) -> String {
-        return if self.statements.len() > 0 {
+        if !self.statements.is_empty() {
             match &self.statements[0] {
                 StatementNode::Let(let_stmt) => let_stmt.token_literal(),
                 StatementNode::Return(return_stmt) => return_stmt.token_literal(),
@@ -105,14 +105,14 @@ impl Node for Program {
             }
         } else {
             String::new()
-        };
+        }
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
         for statement in self.statements.as_slice() {
-            out.push_str(&statement.print_string().as_str());
+            out.push_str(statement.print_string().as_str());
         }
-        return out;
+        out
     }
 }
 
@@ -126,19 +126,19 @@ pub struct LetStatement {
 
 impl Node for LetStatement {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
         out.push_str(self.token_literal().as_str());
-        out.push_str(" ");
+        out.push(' ');
         out.push_str(self.name.print_string().as_str());
         out.push_str(" = ");
         if let Some(value) = &self.value {
             out.push_str(value.print_string().as_str());
         }
-        out.push_str(";");
-        return out;
+        out.push(';');
+        out
     }
 }
 
@@ -151,7 +151,7 @@ pub struct Identifier {
 
 impl Node for Identifier {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+     self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         self.value.clone()
@@ -166,17 +166,17 @@ pub struct ReturnStatement {
 
 impl Node for ReturnStatement {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
         out.push_str(self.token_literal().as_str());
-        out.push_str(" ");
+        out.push(' ');
         if let Some(return_value) = &self.return_value {
             out.push_str(return_value.print_string().as_str());
         }
-        out.push_str(";");
-        return out;
+        out.push(';');
+        out
     }
 }
 
@@ -188,7 +188,7 @@ pub struct ExpressionStatement {
 
 impl Node for ExpressionStatement {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         if let Some(expression) = &self.expression {
@@ -206,10 +206,10 @@ pub struct IntegerLiteral {
 
 impl Node for IntegerLiteral {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
-        return self.token_literal();
+        self.token_literal()
     }
 }
 
@@ -222,14 +222,14 @@ pub struct PrefixExpression {
 
 impl Node for PrefixExpression {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
-        out.push_str("(");
+        out.push('(');
         out.push_str(self.operator.as_str());
         out.push_str(self.right.print_string().as_str());
-        out.push_str(")");
+        out.push(')');
         out
     }
 }
@@ -244,15 +244,15 @@ pub struct InfixExpression {
 
 impl Node for InfixExpression {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
-        out.push_str("(");
+        out.push('(');
         out.push_str(self.left.print_string().as_str());
         out.push_str(format!(" {} ", self.operator).as_str());
         out.push_str(self.right.print_string().as_str());
-        out.push_str(")");
+        out.push(')');
         out
     }
 }
@@ -265,10 +265,10 @@ pub struct Boolean {
 
 impl Node for Boolean {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
-        return self.token_literal();
+        self.token_literal()
     }
 }
 #[derive(Debug, Default, Clone)]
@@ -281,13 +281,13 @@ pub struct IfExpression {
 
 impl Node for IfExpression {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
         out.push_str("if");
         out.push_str(self.condition.print_string().as_str());
-        out.push_str(" ");
+        out.push(' ');
         out.push_str(self.consequence.print_string().as_str());
         if let Some(alt) = &self.alternative {
             out.push_str("else ");
@@ -305,7 +305,7 @@ pub struct BlockStatement {
 
 impl Node for BlockStatement {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
@@ -325,19 +325,20 @@ pub struct FunctionLiteral {
 
 impl Node for FunctionLiteral {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
         out.push_str(self.token_literal().as_str());
-        out.push_str("(");
+        out.push('(');
         for (i, param) in self.parameters.iter().enumerate() {
             out.push_str(param.print_string().as_str());
             if i != self.parameters.len() - 1 {
                 out.push_str(", ");
             }
         }
-        out.push_str(") ");
+        out.push(')');
+        out.push(' ');
         out.push_str(self.body.print_string().as_str());
         out
     }
@@ -352,19 +353,19 @@ pub struct CallExpression {
 
 impl Node for CallExpression {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
         out.push_str(self.function.print_string().as_str());
-        out.push_str("(");
+        out.push('(');
         for (i, arg) in self.arguments.iter().enumerate() {
             out.push_str(arg.print_string().as_str());
             if i != self.arguments.len() - 1 {
                 out.push_str(", ");
             }
         }
-        out.push_str(")");
+        out.push(')');
         out
     }
 }
@@ -377,10 +378,10 @@ pub struct StringLiteral {
 
 impl Node for StringLiteral {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
-        return self.token_literal();
+        self.token_literal()
     }
 }
 
@@ -392,7 +393,7 @@ pub struct ArrayLiteral {
 
 impl Node for ArrayLiteral {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
@@ -401,10 +402,10 @@ impl Node for ArrayLiteral {
             elements.push(element.print_string());
         }
 
-        out.push_str("[");
+        out.push('[');
         out.push_str(elements.join(", ").as_str());
 
-        out.push_str("]");
+        out.push(']');
         out
     }
 }
@@ -418,13 +419,13 @@ pub struct IndexExpression {
 
 impl Node for IndexExpression {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
-        out.push_str("(");
+        out.push('(');
         out.push_str(self.left.print_string().as_str());
-        out.push_str("[");
+        out.push('[');
         out.push_str(self.index.print_string().as_str());
         out.push_str("])");
         out
@@ -439,7 +440,7 @@ pub struct HashLiteral {
 
 impl Node for HashLiteral {
     fn token_literal(&self) -> String {
-        return self.token.literal.clone();
+        self.token.literal.clone()
     }
     fn print_string(&self) -> String {
         let mut out = String::new();
@@ -448,9 +449,9 @@ impl Node for HashLiteral {
             pairs.push(format!("{}: {}", key.print_string(), value.print_string()));
         }
 
-        out.push_str("{");
+        out.push('{');
         out.push_str(pairs.join(", ").as_str());
-        out.push_str("}");
+        out.push('}');
         out
     }
 }

@@ -23,14 +23,14 @@ fn b_len(args: Vec<Object>) -> Object {
         ));
     }
 
-    return match &args[0] {
+    match &args[0] {
         Object::StringObj(string_lit) => Object::Integer(string_lit.len() as i64),
         Object::Array(arr) => Object::Integer(arr.len() as i64),
         other => Object::Error(format!(
             "argument to `len` not supported, got {}",
             other.object_type()
         )),
-    };
+    }
 }
 
 fn b_first(args: Vec<Object>) -> Object {
@@ -49,7 +49,7 @@ fn b_first(args: Vec<Object>) -> Object {
     }
 
     if let Object::Array(arr) = &args[0] {
-        if arr.len() > 0 {
+        if !arr.is_empty() {
             return arr[0].clone();
         }
     }
@@ -72,7 +72,7 @@ fn b_last(args: Vec<Object>) -> Object {
     }
 
     if let Object::Array(arr) = &args[0] {
-        if arr.len() > 0 {
+        if !arr.is_empty() {
             return arr[arr.len() - 1].clone();
         }
     }
@@ -95,7 +95,7 @@ fn b_rest(args: Vec<Object>) -> Object {
     }
 
     if let Object::Array(arr) = &args[0] {
-        if arr.len() > 0 {
+        if !arr.is_empty() {
             let new_elements = arr[1..].to_vec();
 
             return Object::Array(new_elements);

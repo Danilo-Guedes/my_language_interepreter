@@ -84,7 +84,7 @@ impl Parser {
         parser.next_token();
         parser.next_token();
 
-        return parser;
+        parser
     }
 
     fn next_token(&mut self) {
@@ -104,7 +104,7 @@ impl Parser {
             self.next_token();
         }
 
-        return Some(program);
+        Some(program)
     }
 
     fn expect_peek(&mut self, token_kind: TokenKind) -> bool {
@@ -169,7 +169,7 @@ impl Parser {
             value: Default::default(),
         };
 
-        return if !self.expect_peek(TokenKind::Ident) {
+        if !self.expect_peek(TokenKind::Ident) {
             None
         } else {
             stmt.name = Identifier {
@@ -187,7 +187,7 @@ impl Parser {
                 }
                 Some(StatementNode::Let(stmt))
             }
-        };
+        }
     }
 
     fn parse_expression_statement(&mut self) -> Option<StatementNode> {
@@ -240,7 +240,7 @@ impl Parser {
             value: Default::default(),
         };
 
-        return match self.cur_token.literal.parse::<i64>() {
+        match self.cur_token.literal.parse::<i64>() {
             Ok(value) => {
                 literal.value = value;
                 Some(ExpressionNode::Integer(literal))
@@ -252,7 +252,7 @@ impl Parser {
                 ));
                 None
             }
-        };
+        }
     }
 
     fn parse_prefix_expression(&mut self) -> Option<ExpressionNode> {

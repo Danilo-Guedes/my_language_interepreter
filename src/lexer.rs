@@ -142,11 +142,11 @@ impl Lexer {
         self.read_char();
 
         while self.ch != '"' && self.ch != '\0' {
-            self.read_char()
+            self.read_char();
         }
 
         let string_slice = &self.input[position..self.position];
-        string_slice.into_iter().collect()
+        string_slice.iter().collect()
     }
 
     fn peek_char(&self) -> char {

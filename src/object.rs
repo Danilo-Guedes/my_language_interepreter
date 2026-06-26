@@ -61,10 +61,10 @@ impl Display for Object {
                     params.push(p.print_string());
                 }
                 out.push_str("fn");
-                out.push_str("(");
-                out.push_str(&params.join(", ").as_str());
+                out.push('(');
+                out.push_str(params.join(", ").as_str());
                 out.push_str(") {\n");
-                out.push_str(&function.body.print_string().as_str());
+                out.push_str(function.body.print_string().as_str());
                 out.push_str("\n}");
 
                 write!(f, "{}", out)
@@ -77,18 +77,18 @@ impl Display for Object {
                     elems.push(format!("{}", el));
                 }
                 out.push_str(&elems.join(", "));
-                out.push_str("]");
+                out.push(']');
                 write!(f, "{}", out)
             }
             Self::Builtin(_) => write!(f, "builtin function"),
             Self::HashObj(hash) => {
                 let mut out = String::from("{");
                 let mut pairs = vec![];
-                for (_, pair) in &hash.pairs {
+                for pair in hash.pairs.values() {
                     pairs.push(format!("{}: {}", pair.key, pair.value));
                 }
                 out.push_str(&pairs.join(", "));
-                out.push_str("}");
+                out.push('}');
                 write!(f, "{}", out)
             }
             Self::Null => write!(f, "null"),
@@ -141,7 +141,7 @@ impl Environment {
 
     pub fn set(&mut self, name: String, value: Object) -> Option<Object> {
         self.store.insert(name.clone(), value);
-        return self.get(name);
+        self.get(name)
     }
 }
 

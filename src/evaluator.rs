@@ -1,5 +1,3 @@
-// use std::{cell::RefCell, rc::Rc};
-
 use std::{collections::HashMap, ops::Deref};
 
 use crate::{
@@ -42,7 +40,7 @@ impl Evaluator {
                 if Self::is_error(&value) {
                     return value;
                 }
-                return Object::ReturnValue(Box::new(value));
+                Object::ReturnValue(Box::new(value))
             }
             StatementNode::Let(let_stmt) => {
                 let value = self.eval_expression(let_stmt.value);
@@ -67,7 +65,7 @@ impl Evaluator {
                     if Self::is_error(&right) {
                         return right;
                     }
-                    return Self::eval_prefix_expression(prefix_exp.operator, right);
+                    Self::eval_prefix_expression(prefix_exp.operator, right)
                 }
                 ExpressionNode::Infix(inf_exp) => {
                     let left: Object = self.eval_expression(Some(*inf_exp.left));
@@ -78,7 +76,7 @@ impl Evaluator {
                     if Self::is_error(&right) {
                         return right;
                     }
-                    return Self::eval_infix_expression(inf_exp.operator, &left, &right);
+                    Self::eval_infix_expression(inf_exp.operator, &left, &right)
                 }
                 ExpressionNode::IfExpressionNode(if_exp) => self.eval_if_expression(if_exp),
                 ExpressionNode::IdentifierNode(ident) => self.eval_identifier(ident),
@@ -209,9 +207,9 @@ impl Evaluator {
                 self.env = extended_env;
                 let evaluated = self.eval_block_statement(function.body);
                 self.env = old_env;
-                return Self::unwrap_return_value(evaluated);
+                Self::unwrap_return_value(evaluated)
             }
-            Object::Builtin(b_fn) => return b_fn(args),
+            Object::Builtin(b_fn) => b_fn(args),
             _ => Object::Error(format!("not a function: {}", func.object_type())),
         }
     }
@@ -312,13 +310,13 @@ impl Evaluator {
     fn eval_if_expression(&mut self, if_exp: IfExpression) -> Object {
         let condition = self.eval_expression(Some(*if_exp.condition));
 
-        return if Self::is_truthy(condition) {
+        if Self::is_truthy(condition) {
             self.eval_block_statement(if_exp.consequence)
         } else if let Some(alternative) = if_exp.alternative {
             self.eval_block_statement(alternative)
         } else {
             NULL
-        };
+        }
     }
 
     fn is_truthy(obj: Object) -> bool {
@@ -379,6 +377,12 @@ impl Evaluator {
             "!=" => Self::native_bool_to_boolean_object(left != right),
             _ => NULL,
         }
+    }
+}
+
+impl Default for Evaluator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
