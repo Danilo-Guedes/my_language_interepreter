@@ -2,11 +2,13 @@ use std::{collections::HashMap, ops::Deref};
 
 use crate::{
     ast::{BlockStatement, ExpressionNode, Identifier, IfExpression, Program, StatementNode},
-    object::{Environment, Function, HashPair, HashStruct, Hashable, Object, FALSE, NULL, TRUE},
+    object::{
+        Env, Environment, Function, HashPair, HashStruct, Hashable, Object, FALSE, NULL, TRUE,
+    },
 };
 
 pub struct Evaluator {
-    env: Environment,
+    env: Env,
 }
 
 impl Evaluator {
@@ -47,7 +49,10 @@ impl Evaluator {
                 if Self::is_error(&value) {
                     return value;
                 }
-                self.env.set(let_stmt.name.value, value).unwrap()
+                self.env
+                    .borrow_mut()
+                    .set(let_stmt.name.value, value.clone());
+                value
             }
             _ => Object::Null,
         }
@@ -217,11 +222,11 @@ impl Evaluator {
         }
     }
 
-    fn extended_function_env(&self, function: Function, args: Vec<Object>) -> Environment {
-        let mut env = Environment::new_enclosed_environment(Box::new(function.env));
+    fn extended_function_env(&self, function: Function, args: Vec<Object>) -> Env {
+        let env = Environment::new_enclosed_environment(function.env);
 
         for (idx, param) in function.parameters.into_iter().enumerate() {
-            env.set(param.value, args[idx].clone());
+            env.borrow_mut().set(param.value, args[idx].clone());
         }
         env
     }
@@ -332,7 +337,7 @@ impl Evaluator {
     }
 
     fn eval_identifier(&self, identifier: Identifier) -> Object {
-        let value = self.env.get(identifier.value.clone());
+        let value = self.env.borrow().get(identifier.value.clone());
         match value {
             Some(val) => val,
             None => Object::Error(format!("identifier not found: {}", identifier.value)),

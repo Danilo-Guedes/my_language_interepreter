@@ -1,7 +1,9 @@
 use std::{
+    cell::RefCell,
     collections::HashMap,
     fmt::{self, Display, Formatter},
     hash::{DefaultHasher, Hash, Hasher},
+    rc::Rc,
 };
 
 use crate::{
@@ -10,6 +12,7 @@ use crate::{
 };
 
 pub type BuiltinFunction = fn(Vec<Object>) -> Object;
+pub type Env = Rc<RefCell<Environment>>;
 
 pub const TRUE: Object = Object::Boolean(true);
 pub const FALSE: Object = Object::Boolean(false);
@@ -99,18 +102,18 @@ impl Display for Object {
 #[derive(Debug, Clone)]
 pub struct Environment {
     pub store: HashMap<String, Object>,
-    pub outer: Option<Box<Environment>>,
+    pub outer: Option<Env>,
 }
 
 impl Environment {
-    pub fn new_environment() -> Environment {
+    pub fn new_environment() -> Env {
         let mut env_map = HashMap::new();
         Self::init_builtins(&mut env_map);
 
-        Environment {
+        Rc::new(RefCell::new(Environment {
             store: env_map,
             outer: None,
-        }
+        }))
     }
 
     fn init_builtins(hashmap: &mut HashMap<String, Object>) {
@@ -121,27 +124,26 @@ impl Environment {
         }
     }
 
-    pub fn new_enclosed_environment(outer: Box<Environment>) -> Environment {
+    pub fn new_enclosed_environment(outer: Env) -> Env {
         let env_map = HashMap::new();
-        Environment {
+        Rc::new(RefCell::new(Environment {
             store: env_map,
             outer: Some(outer),
-        }
+        }))
     }
 
     pub fn get(&self, name: String) -> Option<Object> {
         match self.store.get(&name) {
             Some(obj) => Some(obj.clone()),
             None => match &self.outer {
-                Some(env) => env.get(name),
+                Some(outer) => outer.borrow().get(name),
                 None => None,
             },
         }
     }
 
-    pub fn set(&mut self, name: String, value: Object) -> Option<Object> {
+    pub fn set(&mut self, name: String, value: Object) {
         self.store.insert(name.clone(), value);
-        self.get(name)
     }
 }
 
@@ -149,7 +151,7 @@ impl Environment {
 pub struct Function {
     pub parameters: Vec<Identifier>,
     pub body: BlockStatement,
-    pub env: Environment,
+    pub env: Env,
 }
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
