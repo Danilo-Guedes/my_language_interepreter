@@ -41,19 +41,19 @@ fn b_first(args: Vec<Object>) -> Object {
         ));
     }
 
-    if args[0].object_type() != "ARRAY" {
-        return Object::Error(format!(
-            "argument to `first` not supported, got {}",
-            args[0].object_type()
-        ));
-    }
-
-    if let Object::Array(arr) = &args[0] {
-        if !arr.is_empty() {
-            return arr[0].clone();
+    match &args[0] {
+        Object::Array(arr) => {
+            if !arr.is_empty() {
+                arr[0].clone()
+            } else {
+                NULL
+            }
         }
+        other => Object::Error(format!(
+            "argument to `first` not supported, got {}",
+            other.object_type()
+        )),
     }
-    NULL
 }
 
 fn b_last(args: Vec<Object>) -> Object {
@@ -64,19 +64,19 @@ fn b_last(args: Vec<Object>) -> Object {
         ));
     }
 
-    if args[0].object_type() != "ARRAY" {
-        return Object::Error(format!(
-            "argument to `last` not supported, got {}",
-            args[0].object_type()
-        ));
-    }
-
-    if let Object::Array(arr) = &args[0] {
-        if !arr.is_empty() {
-            return arr[arr.len() - 1].clone();
+    match &args[0] {
+        Object::Array(arr) => {
+            if !arr.is_empty() {
+                arr[arr.len() - 1].clone()
+            } else {
+                NULL
+            }
         }
+        other => Object::Error(format!(
+            "argument to `last` not supported, got {}",
+            other.object_type()
+        )),
     }
-    NULL
 }
 
 fn b_rest(args: Vec<Object>) -> Object {
@@ -87,21 +87,19 @@ fn b_rest(args: Vec<Object>) -> Object {
         ));
     }
 
-    if args[0].object_type() != "ARRAY" {
-        return Object::Error(format!(
-            "argument to `rest` not supported, got {}",
-            args[0].object_type()
-        ));
-    }
-
-    if let Object::Array(arr) = &args[0] {
-        if !arr.is_empty() {
-            let new_elements = arr[1..].to_vec();
-
-            return Object::Array(new_elements);
+    match &args[0] {
+        Object::Array(arr) => {
+            if !arr.is_empty() {
+                Object::Array(arr[1..].to_vec())
+            } else {
+                NULL
+            }
         }
+        other => Object::Error(format!(
+            "argument to `rest` not supported, got {}",
+            other.object_type()
+        )),
     }
-    NULL
 }
 
 fn b_push(args: Vec<Object>) -> Object {
@@ -112,19 +110,21 @@ fn b_push(args: Vec<Object>) -> Object {
         ));
     }
 
-    if args[0].object_type() != "ARRAY" {
-        return Object::Error(format!(
-            "argument to `push` not supported, got {}",
-            args[0].object_type()
-        ));
+    match &args[0] {
+        Object::Array(arr) => {
+            if !arr.is_empty() {
+                let mut new_elements = arr.clone();
+                new_elements.push(args[1].clone());
+                return Object::Array(new_elements);
+            } else {
+                NULL
+            }
+        }
+        other => Object::Error(format!(
+            "argument to `rest` not supported, got {}",
+            other.object_type()
+        )),
     }
-
-    if let Object::Array(arr) = &args[0] {
-        let mut new_elements = arr.clone();
-        new_elements.push(args[1].clone());
-        return Object::Array(new_elements);
-    }
-    NULL
 }
 
 fn b_log(args: Vec<Object>) -> Object {

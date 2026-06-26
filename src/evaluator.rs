@@ -154,17 +154,16 @@ impl Evaluator {
     }
 
     fn eval_index_expression(&self, left: Object, index: Object) -> Object {
-        if left.object_type() == "ARRAY" && index.object_type() == "INTEGER" {
-            return Self::eval_array_index_expression(left, index);
+        match (&left, &index) {
+            (Object::Array(_), Object::Integer(_)) => {
+                Self::eval_array_index_expression(left, index)
+            }
+            (Object::HashObj(_), _) => Self::eval_hash_index_expression(left, index),
+            _ => Object::Error(format!(
+                "index operator not supported: {}",
+                left.object_type()
+            )),
         }
-
-        if left.object_type() == "HASH" {
-            return Self::eval_hash_index_expression(left, index);
-        }
-        Object::Error(format!(
-            "index operator not supported: {}",
-            left.object_type()
-        ))
     }
 
     fn eval_hash_index_expression(hash: Object, index: Object) -> Object {
@@ -259,7 +258,7 @@ impl Evaluator {
     }
 
     fn is_error(obj: &Object) -> bool {
-        obj.object_type() == "ERROR"
+        matches!(obj, Object::Error(_))
     }
 
     fn eval_prefix_expression(operator: String, right: Object) -> Object {
@@ -350,7 +349,7 @@ impl Evaluator {
         for stmt in block.statements {
             result = self.eval_statement(stmt);
 
-            if result.object_type() == "RETURN_VALUE" || result.object_type() == "ERROR" {
+            if matches!(result, Object::ReturnValue(_) | Object::Error(_)) {
                 return result;
             }
         }
