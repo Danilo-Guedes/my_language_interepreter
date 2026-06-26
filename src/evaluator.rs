@@ -188,6 +188,9 @@ impl Evaluator {
     fn eval_array_index_expression(array: Object, index: Object) -> Object {
         if let Object::Array(arr) = array {
             if let Object::Integer(idx) = index {
+                if arr.is_empty() {
+                    return NULL;
+                }
                 let max = (arr.len() - 1) as i64;
                 if idx < 0 || idx > max {
                     return NULL;
@@ -816,6 +819,25 @@ mod test {
                 None => test_null_object(evaluated),
             }
         }
+    }
+
+    #[test]
+    fn test_recursive_function() {
+        // Regression: a `let`-bound function must be able to call itself.
+        // Currently fails ("identifier not found: fib") because the closure
+        // captures an environment SNAPSHOT taken before the `let` binding is
+        // inserted, so the function's own name is not in its captured scope.
+        let input =
+            "let fib = fn(x) { if (x < 2) { x } else { fib(x - 1) + fib(x - 2) } }; fib(10);";
+        test_integer_object(test_eval(input), 55);
+    }
+
+    #[test]
+    fn test_empty_array_index() {
+        // Regression: indexing an empty array must return NULL, not panic.
+        // Currently panics with "attempt to subtract with overflow" because
+        // `arr.len() - 1` underflows (usize) before the bounds check runs.
+        test_null_object(test_eval("[][0]"));
     }
 
     fn test_null_object(obj: Object) {

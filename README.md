@@ -2,7 +2,7 @@
 
 A tree-walking interpreter for **GuedzLang**, written in Rust. Based on the
 Monkey language from *Writing An Interpreter In Go* (Thorsten Ball), ported to
-Rust.
+Rust using a TDD development approach.
 
 ## Running it
 
