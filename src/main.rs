@@ -10,8 +10,8 @@ pub mod parser;
 pub mod repl;
 pub mod token;
 
-fn main() {
-    println!("\n\nHello!! This is the GuedzLang interpreter!");
+fn main() -> std::io::Result<()> {
+    println!("\n\nHello!! This is the GuedzLang REPL...");
     println!("Feel free to type in commands");
     start(io::stdin(), io::stdout())
 }

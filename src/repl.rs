@@ -3,19 +3,29 @@ use crate::lexer::Lexer;
 use crate::parser::Parser;
 use std::io::{Stdin, Stdout, Write};
 
-pub fn start(stdin: Stdin, mut stdout: Stdout) {
+pub fn start(stdin: Stdin, mut stdout: Stdout) -> std::io::Result<()> {
     let mut evaluator = Evaluator::new();
 
     loop {
-        write!(stdout, ">> ").expect("Failed to write to stdout");
-        stdout.flush().expect("Failed to flush stdout");
+        write!(stdout, ">> ")?;
+        stdout.flush()?;
 
         let mut input = String::new();
 
-        if let Err(e) = stdin.read_line(&mut input) {
-            writeln!(stdout, "Failed to read from stdin: {}", e)
-                .expect("Failed to write to stdout");
-            return;
+        let bytes_read = stdin.read_line(&mut input);
+
+        match bytes_read {
+            Ok(0) => {
+                writeln!(stdout, "Exiting REPL...")?;
+                return Ok(());
+            }
+            Ok(_) => {
+                // Successfully read input, continue with processing
+            }
+            Err(e) => {
+                writeln!(stdout, "Failed to read from stdin: {}", e)?;
+                return Err(e);
+            }
         }
 
         let lexer: Lexer = Lexer::new(&input);
@@ -23,20 +33,20 @@ pub fn start(stdin: Stdin, mut stdout: Stdout) {
         let program = parser.parse_program().expect("Failed to parse program");
 
         if !parser.errors().is_empty() {
-            print_parse_errors(&stdout, parser.errors());
+            print_parse_errors(&stdout, parser.errors())?;
             continue;
         }
 
         let evaluated = evaluator.eval_program(program);
 
-        writeln!(stdout, "{}", evaluated).expect("Failed to write {evaluated} to stdout");
+        writeln!(stdout, "{}", evaluated)?;
     }
 }
 
-fn print_parse_errors(mut stdout: &Stdout, errors: &Vec<String>) {
-    writeln!(stdout, "Oops! We ran into parser errors")
-        .expect("Failed to write print_parse_errors to stdout");
+fn print_parse_errors(mut stdout: &Stdout, errors: &[String]) -> std::io::Result<()> {
+    writeln!(stdout, "Oops! We ran into parser errors")?;
     for error in errors {
-        writeln!(stdout, "{}", error).expect("Failed to write to stdout");
+        writeln!(stdout, "{}", error)?;
     }
+    Ok(())
 }
