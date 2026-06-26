@@ -398,7 +398,6 @@ mod test {
     use std::any;
 
     use crate::{
-        ast::Node,
         lexer::Lexer,
         object::{Hashable, Object, FALSE, NULL, TRUE},
         parser::Parser,
@@ -580,16 +579,16 @@ mod test {
                     func.parameters.len()
                 );
                 assert_eq!(
-                    func.parameters[0].print_string(),
+                    func.parameters[0].to_string(),
                     "x",
                     "paramentes is not 'x', got={}",
-                    func.parameters[0].print_string()
+                    func.parameters[0].to_string()
                 );
                 assert_eq!(
-                    func.body.print_string(),
+                    func.body.to_string(),
                     "(x + 2)",
                     "function body is not '(x + 2);', got={}",
-                    func.body.print_string()
+                    func.body.to_string()
                 );
             }
             _ => panic!("object is not Function, got {:?}", evaluated),

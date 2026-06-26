@@ -115,7 +115,7 @@ fn b_push(args: Vec<Object>) -> Object {
             if !arr.is_empty() {
                 let mut new_elements = arr.clone();
                 new_elements.push(args[1].clone());
-                return Object::Array(new_elements);
+                Object::Array(new_elements)
             } else {
                 NULL
             }

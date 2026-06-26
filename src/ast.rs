@@ -1,8 +1,9 @@
 use crate::token::Token;
 
+use std::fmt;
+
 pub trait Node {
     fn token_literal(&self) -> String;
-    fn print_string(&self) -> String;
 }
 
 #[derive(Debug, Clone)]
@@ -22,13 +23,15 @@ impl Node for StatementNode {
             Self::Block(block_stmt) => block_stmt.token_literal(),
         }
     }
+}
 
-    fn print_string(&self) -> String {
+impl fmt::Display for StatementNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Let(let_stmt) => let_stmt.print_string(),
-            Self::Return(return_stmt) => return_stmt.print_string(),
-            Self::Expression(expression_stmt) => expression_stmt.print_string(),
-            Self::Block(block_stmt) => block_stmt.print_string(),
+            Self::Let(let_stmt) => write!(f, "{}", let_stmt),
+            Self::Return(return_stmt) => write!(f, "{}", return_stmt),
+            Self::Expression(expression_stmt) => write!(f, "{}", expression_stmt),
+            Self::Block(block_stmt) => write!(f, "{}", block_stmt),
         }
     }
 }
@@ -70,22 +73,24 @@ impl Node for ExpressionNode {
             Self::None => String::new(),
         }
     }
+}
 
-    fn print_string(&self) -> String {
+impl fmt::Display for ExpressionNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::IdentifierNode(identifier) => identifier.print_string(),
-            Self::Integer(integer) => integer.print_string(),
-            Self::Prefix(prefix_expression) => prefix_expression.print_string(),
-            Self::Infix(infix_expression) => infix_expression.print_string(),
-            Self::BooleanNode(boolean) => boolean.print_string(),
-            Self::IfExpressionNode(if_expression) => if_expression.print_string(),
-            Self::Function(function) => function.print_string(),
-            Self::Call(call_expression) => call_expression.print_string(),
-            Self::StringExp(string_literal) => string_literal.print_string(),
-            Self::Array(array_literal) => array_literal.print_string(),
-            Self::Index(idx_exp) => idx_exp.print_string(),
-            Self::Hash(hash_literal) => hash_literal.print_string(),
-            Self::None => String::new(),
+            Self::IdentifierNode(identifier) => write!(f, "{}", identifier),
+            Self::Integer(integer) => write!(f, "{}", integer),
+            Self::Prefix(prefix_expression) => write!(f, "{}", prefix_expression),
+            Self::Infix(infix_expression) => write!(f, "{}", infix_expression),
+            Self::BooleanNode(boolean) => write!(f, "{}", boolean),
+            Self::IfExpressionNode(if_expression) => write!(f, "{}", if_expression),
+            Self::Function(function) => write!(f, "{}", function),
+            Self::Call(call_expression) => write!(f, "{}", call_expression),
+            Self::StringExp(string_literal) => write!(f, "{}", string_literal),
+            Self::Array(array_literal) => write!(f, "{}", array_literal),
+            Self::Index(idx_exp) => write!(f, "{}", idx_exp),
+            Self::Hash(hash_literal) => write!(f, "{}", hash_literal),
+            Self::None => write!(f, ""),
         }
     }
 }
@@ -107,12 +112,15 @@ impl Node for Program {
             String::new()
         }
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
         for statement in self.statements.as_slice() {
-            out.push_str(statement.print_string().as_str());
+            out.push_str(statement.to_string().as_str());
         }
-        out
+        write!(f, "{}", out)
     }
 }
 
@@ -128,17 +136,20 @@ impl Node for LetStatement {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for LetStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
         out.push_str(self.token_literal().as_str());
         out.push(' ');
-        out.push_str(self.name.print_string().as_str());
+        out.push_str(self.name.to_string().as_str());
         out.push_str(" = ");
         if let Some(value) = &self.value {
-            out.push_str(value.print_string().as_str());
+            out.push_str(value.to_string().as_str());
         }
         out.push(';');
-        out
+        write!(f, "{}", out)
     }
 }
 
@@ -151,10 +162,13 @@ pub struct Identifier {
 
 impl Node for Identifier {
     fn token_literal(&self) -> String {
-     self.token.literal.clone()
+        self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
-        self.value.clone()
+}
+
+impl fmt::Display for Identifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -168,15 +182,18 @@ impl Node for ReturnStatement {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for ReturnStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
         out.push_str(self.token_literal().as_str());
         out.push(' ');
         if let Some(return_value) = &self.return_value {
-            out.push_str(return_value.print_string().as_str());
+            out.push_str(return_value.to_string().as_str());
         }
         out.push(';');
-        out
+        write!(f, "{}", out)
     }
 }
 
@@ -190,11 +207,14 @@ impl Node for ExpressionStatement {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for ExpressionStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(expression) = &self.expression {
-            return expression.print_string();
+            return write!(f, "{}", expression);
         }
-        String::from("")
+        write!(f, "")
     }
 }
 
@@ -208,8 +228,11 @@ impl Node for IntegerLiteral {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
-        self.token_literal()
+}
+
+impl fmt::Display for IntegerLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.token_literal())
     }
 }
 
@@ -224,16 +247,18 @@ impl Node for PrefixExpression {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for PrefixExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
         out.push('(');
         out.push_str(self.operator.as_str());
-        out.push_str(self.right.print_string().as_str());
+        out.push_str(self.right.to_string().as_str());
         out.push(')');
-        out
+        write!(f, "{}", out)
     }
 }
-
 #[derive(Debug, Default, Clone)]
 pub struct InfixExpression {
     pub token: Token,
@@ -246,14 +271,17 @@ impl Node for InfixExpression {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for InfixExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
         out.push('(');
-        out.push_str(self.left.print_string().as_str());
+        out.push_str(self.left.to_string().as_str());
         out.push_str(format!(" {} ", self.operator).as_str());
-        out.push_str(self.right.print_string().as_str());
+        out.push_str(self.right.to_string().as_str());
         out.push(')');
-        out
+        write!(f, "{}", out)
     }
 }
 
@@ -267,8 +295,11 @@ impl Node for Boolean {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
-        self.token_literal()
+}
+
+impl fmt::Display for Boolean {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.token_literal())
     }
 }
 #[derive(Debug, Default, Clone)]
@@ -283,17 +314,20 @@ impl Node for IfExpression {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for IfExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
         out.push_str("if");
-        out.push_str(self.condition.print_string().as_str());
+        out.push_str(self.condition.to_string().as_str());
         out.push(' ');
-        out.push_str(self.consequence.print_string().as_str());
+        out.push_str(self.consequence.to_string().as_str());
         if let Some(alt) = &self.alternative {
             out.push_str("else ");
-            out.push_str(alt.print_string().as_str());
+            out.push_str(alt.to_string().as_str());
         }
-        out
+        write!(f, "{}", out)
     }
 }
 
@@ -307,15 +341,17 @@ impl Node for BlockStatement {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
-        let mut out = String::new();
-        for statement in &self.statements {
-            out.push_str(statement.print_string().as_str());
-        }
-        out
-    }
 }
 
+impl fmt::Display for BlockStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut out = String::new();
+        for statement in &self.statements {
+            out.push_str(statement.to_string().as_str());
+        }
+        write!(f, "{}", out)
+    }
+}
 #[derive(Debug, Clone)]
 pub struct FunctionLiteral {
     pub token: Token,
@@ -327,20 +363,23 @@ impl Node for FunctionLiteral {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for FunctionLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
         out.push_str(self.token_literal().as_str());
         out.push('(');
         for (i, param) in self.parameters.iter().enumerate() {
-            out.push_str(param.print_string().as_str());
+            out.push_str(param.to_string().as_str());
             if i != self.parameters.len() - 1 {
                 out.push_str(", ");
             }
         }
         out.push(')');
         out.push(' ');
-        out.push_str(self.body.print_string().as_str());
-        out
+        out.push_str(self.body.to_string().as_str());
+        write!(f, "{}", out)
     }
 }
 
@@ -355,18 +394,21 @@ impl Node for CallExpression {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for CallExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
-        out.push_str(self.function.print_string().as_str());
+        out.push_str(self.function.to_string().as_str());
         out.push('(');
         for (i, arg) in self.arguments.iter().enumerate() {
-            out.push_str(arg.print_string().as_str());
+            out.push_str(arg.to_string().as_str());
             if i != self.arguments.len() - 1 {
                 out.push_str(", ");
             }
         }
         out.push(')');
-        out
+        write!(f, "{}", out)
     }
 }
 
@@ -380,8 +422,11 @@ impl Node for StringLiteral {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
-        self.token_literal()
+}
+
+impl fmt::Display for StringLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.token_literal())
     }
 }
 
@@ -395,18 +440,21 @@ impl Node for ArrayLiteral {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for ArrayLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
         let mut elements: Vec<String> = Vec::new();
         for element in &self.elements {
-            elements.push(element.print_string());
+            elements.push(element.to_string());
         }
 
         out.push('[');
         out.push_str(elements.join(", ").as_str());
 
         out.push(']');
-        out
+        write!(f, "{}", out)
     }
 }
 
@@ -421,14 +469,17 @@ impl Node for IndexExpression {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for IndexExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
         out.push('(');
-        out.push_str(self.left.print_string().as_str());
+        out.push_str(self.left.to_string().as_str());
         out.push('[');
-        out.push_str(self.index.print_string().as_str());
+        out.push_str(self.index.to_string().as_str());
         out.push_str("])");
-        out
+        write!(f, "{}", out)
     }
 }
 
@@ -442,23 +493,26 @@ impl Node for HashLiteral {
     fn token_literal(&self) -> String {
         self.token.literal.clone()
     }
-    fn print_string(&self) -> String {
+}
+
+impl fmt::Display for HashLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out = String::new();
         let mut pairs: Vec<String> = Vec::new();
         for (key, value) in &self.pairs {
-            pairs.push(format!("{}: {}", key.print_string(), value.print_string()));
+            pairs.push(format!("{}: {}", key, value));
         }
 
         out.push('{');
         out.push_str(pairs.join(", ").as_str());
         out.push('}');
-        out
+        write!(f, "{}", out)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::{ExpressionNode, Identifier, LetStatement, Node, Program, StatementNode};
+    use super::{ExpressionNode, Identifier, LetStatement, Program, StatementNode};
     use crate::token::{Token, TokenKind};
 
     #[test]
@@ -487,10 +541,10 @@ mod test {
         };
 
         assert_eq!(
-            program.print_string(),
+            format!("{}", program),
             "let myVar = anotherVar;",
-            "program.print_string() wrong. got={}",
-            program.print_string()
+            "program string representation is wrong. got={}",
+            program
         );
     }
 }

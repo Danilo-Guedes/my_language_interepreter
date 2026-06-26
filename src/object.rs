@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    ast::{BlockStatement, Identifier, Node},
+    ast::{BlockStatement, Identifier},
     builtins::Builtins,
 };
 
@@ -61,13 +61,13 @@ impl Display for Object {
                 let mut params = vec![];
 
                 for p in &function.parameters {
-                    params.push(p.print_string());
+                    params.push(p.to_string());
                 }
                 out.push_str("fn");
                 out.push('(');
                 out.push_str(params.join(", ").as_str());
                 out.push_str(") {\n");
-                out.push_str(function.body.print_string().as_str());
+                out.push_str(function.body.to_string().as_str());
                 out.push_str("\n}");
 
                 write!(f, "{}", out)

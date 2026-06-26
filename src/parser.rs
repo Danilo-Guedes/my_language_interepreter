@@ -946,7 +946,7 @@ mod tests {
 
             check_parser_errors(&parser);
 
-            let actual = program.print_string();
+            let actual = program.to_string();
             assert_eq!(actual, test.1, "expected={}, got={}", test.1, actual);
         }
     }
