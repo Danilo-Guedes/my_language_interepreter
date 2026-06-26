@@ -10,6 +10,7 @@ impl Builtins {
             (String::from("last"), Object::Builtin(b_last)),
             (String::from("rest"), Object::Builtin(b_rest)),
             (String::from("push"), Object::Builtin(b_push)),
+            (String::from("log"), Object::Builtin(b_log)),
         ]
     }
 }
@@ -122,6 +123,13 @@ fn b_push(args: Vec<Object>) -> Object {
         let mut new_elements = arr.clone();
         new_elements.push(args[1].clone());
         return Object::Array(new_elements);
+    }
+    NULL
+}
+
+fn b_log(args: Vec<Object>) -> Object {
+    for arg in args {
+        println!("{}", arg);
     }
     NULL
 }
