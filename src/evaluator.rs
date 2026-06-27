@@ -94,21 +94,19 @@ impl Evaluator {
                 if Self::is_error(&function) {
                     return function;
                 }
-                let args = self.eval_expressions(call_exp.arguments);
-
-                if args.len() == 1 && Self::is_error(&args[0]) {
-                    return args[0].clone();
-                }
+                let args = match self.eval_expressions(call_exp.arguments) {
+                    Ok(args) => args,
+                    Err(err) => return err,
+                };
 
                 self.apply_function(function, args)
             }
             ExpressionNode::StringExp(string_literal) => Object::StringObj(string_literal.value),
             ExpressionNode::Array(array_literal) => {
-                let elements = self.eval_expressions(array_literal.elements);
-
-                if elements.len() == 1 && Self::is_error(&elements[0]) {
-                    return elements[0].clone();
-                }
+                let elements = match self.eval_expressions(array_literal.elements) {
+                    Ok(elements) => elements,
+                    Err(err) => return err,
+                };
                 Object::Array(elements)
             }
             ExpressionNode::Index(index_exp) => {
@@ -232,17 +230,20 @@ impl Evaluator {
         }
     }
 
-    fn eval_expressions(&mut self, expressions: Vec<ExpressionNode>) -> Vec<Object> {
+    fn eval_expressions(
+        &mut self,
+        expressions: Vec<ExpressionNode>,
+    ) -> Result<Vec<Object>, Object> {
         let mut result = Vec::new();
 
         for exp in expressions {
             let evaluated = self.eval_expression(exp);
             if Self::is_error(&evaluated) {
-                return vec![evaluated];
+                return Err(evaluated);
             }
             result.push(evaluated);
         }
-        result
+        Ok(result)
     }
     fn native_bool_to_boolean_object(input: bool) -> Object {
         if input {
