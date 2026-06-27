@@ -69,7 +69,7 @@ impl Evaluator {
                 if Self::is_error(&right) {
                     return right;
                 }
-                Self::eval_prefix_expression(prefix_exp.operator, right)
+                Self::eval_prefix_expression(&prefix_exp.operator, right)
             }
             ExpressionNode::Infix(inf_exp) => {
                 let left: Object = self.eval_expression(*inf_exp.left);
@@ -80,7 +80,7 @@ impl Evaluator {
                 if Self::is_error(&right) {
                     return right;
                 }
-                Self::eval_infix_expression(inf_exp.operator, &left, &right)
+                Self::eval_infix_expression(&inf_exp.operator, &left, &right)
             }
             ExpressionNode::IfExpressionNode(if_exp) => self.eval_if_expression(if_exp),
             ExpressionNode::IdentifierNode(ident) => self.eval_identifier(ident),
@@ -257,8 +257,8 @@ impl Evaluator {
         matches!(obj, Object::Error(_))
     }
 
-    fn eval_prefix_expression(operator: String, right: Object) -> Object {
-        match operator.as_str() {
+    fn eval_prefix_expression(operator: &str, right: Object) -> Object {
+        match operator {
             "!" => Self::eval_bang_operator_expression(right),
             "-" => Self::eval_minus_prefix_operator_expression(right),
             _ => Object::Error(format!(
@@ -269,7 +269,7 @@ impl Evaluator {
         }
     }
 
-    fn eval_infix_expression(operator: String, left: &Object, right: &Object) -> Object {
+    fn eval_infix_expression(operator: &str, left: &Object, right: &Object) -> Object {
         if left.object_type() != right.object_type() {
             return Object::Error(format!(
                 "type mismatch: {} {} {}",
@@ -282,7 +282,7 @@ impl Evaluator {
             (Object::Integer(left_val), Object::Integer(right_val), op) => {
                 Self::eval_integer_infix_expression(op, *left_val, *right_val)
             }
-            (Object::Boolean(left_val), Object::Boolean(right_val), op) => match op.as_str() {
+            (Object::Boolean(left_val), Object::Boolean(right_val), op) => match op {
                 "==" => Self::native_bool_to_boolean_object(left_val == right_val),
                 "!=" => Self::native_bool_to_boolean_object(left_val != right_val),
                 _ => Object::Error(format!(
@@ -292,7 +292,7 @@ impl Evaluator {
                     right.object_type()
                 )),
             },
-            (Object::StringObj(left_str), Object::StringObj(right_str), op) => match op.as_str() {
+            (Object::StringObj(left_str), Object::StringObj(right_str), op) => match op {
                 "+" => Object::StringObj(format!("{}{}", left_str, right_str)),
                 _ => Object::Error(format!(
                     "unknown operator: {} {} {}",
@@ -368,8 +368,8 @@ impl Evaluator {
         }
     }
 
-    fn eval_integer_infix_expression(operator: String, left: i64, right: i64) -> Object {
-        match operator.as_str() {
+    fn eval_integer_infix_expression(operator: &str, left: i64, right: i64) -> Object {
+        match operator {
             "+" => Object::Integer(left + right),
             "-" => Object::Integer(left - right),
             "*" => Object::Integer(left * right),
