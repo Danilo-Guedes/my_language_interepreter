@@ -336,7 +336,7 @@ impl Evaluator {
     }
 
     fn eval_identifier(&self, identifier: Identifier) -> Object {
-        let value = self.env.borrow().get(identifier.value.clone());
+        let value = self.env.borrow().get(&identifier.value);
         match value {
             Some(val) => val,
             None => Object::Error(format!("identifier not found: {}", identifier.value)),

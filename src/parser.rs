@@ -125,7 +125,7 @@ impl Parser {
         self.cur_token.kind == token_kind
     }
 
-    pub fn errors(&self) -> &Vec<String> {
+    pub fn errors(&self) -> &[String] {
         &self.errors
     }
 

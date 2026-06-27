@@ -33,18 +33,18 @@ pub enum Object {
 }
 
 impl Object {
-    pub fn object_type(&self) -> String {
+    pub fn object_type(&self) -> &'static str {
         match self {
-            Self::Integer(_) => String::from("INTEGER"),
-            Self::Boolean(_) => String::from("BOOLEAN"),
-            Self::ReturnValue(_) => String::from("RETURN_VALUE"),
-            Self::Error(_) => String::from("ERROR"),
-            Self::Func(_) => String::from("FUNCTION"),
-            Self::StringObj(_) => String::from("STRING"),
-            Self::Builtin(_) => String::from("BUILTIN"),
-            Self::Array(_) => String::from("ARRAY"),
-            Self::HashObj(_) => String::from("HASH"),
-            Self::Null => String::from("NULL"),
+            Self::Integer(_) => "INTEGER",
+            Self::Boolean(_) => "BOOLEAN",
+            Self::ReturnValue(_) => "RETURN_VALUE",
+            Self::Error(_) => "ERROR",
+            Self::Func(_) => "FUNCTION",
+            Self::StringObj(_) => "STRING",
+            Self::Builtin(_) => "BUILTIN",
+            Self::Array(_) => "ARRAY",
+            Self::HashObj(_) => "HASH",
+            Self::Null => "NULL",
         }
     }
 }
@@ -57,42 +57,32 @@ impl Display for Object {
             Self::ReturnValue(ret_value) => write!(f, "{}", ret_value),
             Self::Error(message) => write!(f, "ERROR: {}", message),
             Self::Func(function) => {
-                let mut out = String::from("");
-                let mut params = vec![];
-
-                for p in &function.parameters {
-                    params.push(p.to_string());
-                }
-                out.push_str("fn");
-                out.push('(');
-                out.push_str(params.join(", ").as_str());
-                out.push_str(") {\n");
-                out.push_str(function.body.to_string().as_str());
-                out.push_str("\n}");
-
-                write!(f, "{}", out)
+                let params = function
+                    .parameters
+                    .iter()
+                    .map(|p| p.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(f, "fn({}) {{\n{}\n}}", params, function.body)
             }
             Self::StringObj(str) => write!(f, "{}", str),
             Self::Array(elements) => {
-                let mut out = String::from("[");
-                let mut elems = vec![];
-                for el in elements {
-                    elems.push(format!("{}", el));
-                }
-                out.push_str(&elems.join(", "));
-                out.push(']');
-                write!(f, "{}", out)
+                let elems = elements
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(f, "[{}]", elems)
             }
             Self::Builtin(_) => write!(f, "builtin function"),
             Self::HashObj(hash) => {
-                let mut out = String::from("{");
-                let mut pairs = vec![];
-                for pair in hash.pairs.values() {
-                    pairs.push(format!("{}: {}", pair.key, pair.value));
-                }
-                out.push_str(&pairs.join(", "));
-                out.push('}');
-                write!(f, "{}", out)
+                let pairs = hash
+                    .pairs
+                    .iter()
+                    .map(|(_, pair)| format!("{}: {}", pair.key, pair.value))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(f, "{{{}}}", pairs)
             }
             Self::Null => write!(f, "null"),
         }
@@ -132,8 +122,8 @@ impl Environment {
         }))
     }
 
-    pub fn get(&self, name: String) -> Option<Object> {
-        match self.store.get(&name) {
+    pub fn get(&self, name: &str) -> Option<Object> {
+        match self.store.get(name) {
             Some(obj) => Some(obj.clone()),
             None => match &self.outer {
                 Some(outer) => outer.borrow().get(name),
@@ -143,7 +133,7 @@ impl Environment {
     }
 
     pub fn set(&mut self, name: String, value: Object) {
-        self.store.insert(name.clone(), value);
+        self.store.insert(name, value);
     }
 }
 
@@ -156,7 +146,7 @@ pub struct Function {
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct HashKey {
-    pub object_type: String,
+    pub object_type: &'static str,
     pub value: i64,
 }
 
