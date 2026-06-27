@@ -31,7 +31,7 @@ impl Lexer {
         self.read_position += 1;
     }
     pub fn next_token(&mut self) -> Token {
-        self.skip_whitespace();
+        self.skip_whitespace_and_comments();
 
         let token = match self.ch {
             '=' => {
@@ -118,8 +118,22 @@ impl Lexer {
         identifier
     }
 
-    fn skip_whitespace(&mut self) {
-        while self.ch.is_ascii_whitespace() {
+    fn skip_whitespace_and_comments(&mut self) {
+        loop {
+            while self.ch.is_ascii_whitespace() {
+                self.read_char();
+            }
+            // line comment: `//` to end of line
+            if self.ch == '/' && self.peek_char() == '/' {
+                self.skip_comment();
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn skip_comment(&mut self) {
+        while self.ch != '\n' && self.ch != '\0' {
             self.read_char();
         }
     }
@@ -189,7 +203,9 @@ mod test {
             "foobar"
             "foo bar"
             [1, 2];
-            {"foo": "bar"}
+            {"foo": "bar"};
+            let five = 5;// a comment
+            let ten = 10; // another comment
             "#;
 
         let expected: Vec<Token> = vec![
@@ -536,6 +552,50 @@ mod test {
             Token {
                 kind: TokenKind::RBrace,
                 literal: "}".to_string(),
+            },
+            Token {
+                kind: TokenKind::Semicolon,
+                literal: ";".to_string(),
+            },
+            Token {
+                kind: TokenKind::Let,
+                literal: "let".to_string(),
+            },
+            Token {
+                kind: TokenKind::Ident,
+                literal: "five".to_string(),
+            },
+            Token {
+                kind: TokenKind::Assign,
+                literal: "=".to_string(),
+            },
+            Token {
+                kind: TokenKind::Int,
+                literal: "5".to_string(),
+            },
+            Token {
+                kind: TokenKind::Semicolon,
+                literal: ";".to_string(),
+            },
+            Token {
+                kind: TokenKind::Let,
+                literal: "let".to_string(),
+            },
+            Token {
+                kind: TokenKind::Ident,
+                literal: "ten".to_string(),
+            },
+            Token {
+                kind: TokenKind::Assign,
+                literal: "=".to_string(),
+            },
+            Token {
+                kind: TokenKind::Int,
+                literal: "10".to_string(),
+            },
+            Token {
+                kind: TokenKind::Semicolon,
+                literal: ";".to_string(),
             },
             Token {
                 kind: TokenKind::EOF,
