@@ -116,7 +116,8 @@ and the variables*.**
 
 | File           | Job                                                                                      |
 | -------------- | ---------------------------------------------------------------------------------------- |
-| `main.rs`      | Entry point. Declares the modules and launches the REPL.                                 |
+| `lib.rs`       | Library crate root — declares the modules; the public API the binary and `tests/` build against. |
+| `main.rs`      | Thin binary entry point — wires up I/O and launches the REPL.                            |
 | `lexer.rs`     | Reads the raw source string and produces **tokens**.                                     |
 | `token.rs`     | Defines the `Token` type. Pure data — no logic.                                          |
 | `parser.rs`    | Consumes tokens from the lexer and builds the **AST** (handles precedence, grouping).    |
@@ -183,3 +184,7 @@ ordering trap, so closures and recursion both fall out of the same mechanism.
 ```bash
 cargo test
 ```
+
+Unit tests live alongside the code (`#[cfg(test)]` modules in each file); the
+`tests/` directory holds end-to-end tests that drive the interpreter through its
+public library API — the same way an external program embedding it would.
