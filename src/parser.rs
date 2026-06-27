@@ -9,8 +9,8 @@ use crate::ast::{
 use crate::lexer::Lexer;
 use crate::token::{Token, TokenKind};
 
-type PrefixParseFn = fn(&mut Parser) -> Option<ExpressionNode>;
-type InfixParseFn = fn(&mut Parser, ExpressionNode) -> Option<ExpressionNode>;
+type PrefixParseFn = fn(&mut Parser) -> ExpressionNode;
+type InfixParseFn = fn(&mut Parser, ExpressionNode) -> ExpressionNode;
 
 #[derive(Debug, Copy, Clone)]
 enum PrecedenceLevel {
@@ -201,7 +201,7 @@ impl Parser {
         Some(StatementNode::Expression(stmt))
     }
 
-    fn parse_expression(&mut self, precedence_level: PrecedenceLevel) -> Option<ExpressionNode> {
+    fn parse_expression(&mut self, precedence_level: PrecedenceLevel) -> ExpressionNode {
         let prefix = self.prefix_parse_fns.get(&self.cur_token.kind);
         if let Some(prefix_fn) = prefix {
             let mut left_exp = prefix_fn(self);
@@ -210,16 +210,13 @@ impl Parser {
             {
                 let infix_fn = self.infix_parse_fns.get(&self.peek_token.kind);
                 if let Some(infix_func) = infix_fn {
-                    left_exp = infix_func(
-                        self,
-                        left_exp.expect("left_exp is None, but it should be Some(ExpressionNode)"),
-                    );
+                    left_exp = infix_func(self, left_exp);
                 }
             }
             return left_exp;
         };
         self.no_prefix_parse_fn_error(self.cur_token.kind.clone());
-        None
+        ExpressionNode::None
     }
 
     fn no_prefix_parse_fn_error(&mut self, token_kind: TokenKind) {
@@ -227,14 +224,14 @@ impl Parser {
         self.errors.push(msg);
     }
 
-    fn parse_identifier(&mut self) -> Option<ExpressionNode> {
-        Some(ExpressionNode::IdentifierNode(Identifier {
+    fn parse_identifier(&mut self) -> ExpressionNode {
+        ExpressionNode::IdentifierNode(Identifier {
             token: self.cur_token.clone(),
             value: self.cur_token.literal.clone(),
-        }))
+        })
     }
 
-    fn parse_integer_literal(&mut self) -> Option<ExpressionNode> {
+    fn parse_integer_literal(&mut self) -> ExpressionNode {
         let mut literal = IntegerLiteral {
             token: self.cur_token.clone(),
             value: Default::default(),
@@ -243,19 +240,19 @@ impl Parser {
         match self.cur_token.literal.parse::<i64>() {
             Ok(value) => {
                 literal.value = value;
-                Some(ExpressionNode::Integer(literal))
+                ExpressionNode::Integer(literal)
             }
             Err(_) => {
                 self.errors.push(format!(
                     "could not parse '{}' as integer",
                     self.cur_token.literal
                 ));
-                None
+                ExpressionNode::None
             }
         }
     }
 
-    fn parse_prefix_expression(&mut self) -> Option<ExpressionNode> {
+    fn parse_prefix_expression(&mut self) -> ExpressionNode {
         let mut expression = PrefixExpression {
             token: self.cur_token.clone(),
             operator: self.cur_token.literal.clone(),
@@ -264,16 +261,11 @@ impl Parser {
 
         self.next_token();
 
-        match self.parse_expression(PrecedenceLevel::Prefix) {
-            Some(right) => {
-                expression.right = Box::new(right);
-                Some(ExpressionNode::Prefix(expression))
-            }
-            None => None,
-        }
+        expression.right = Box::new(self.parse_expression(PrecedenceLevel::Prefix));
+        ExpressionNode::Prefix(expression)
     }
 
-    fn parse_infix_expression(&mut self, left: ExpressionNode) -> Option<ExpressionNode> {
+    fn parse_infix_expression(&mut self, left: ExpressionNode) -> ExpressionNode {
         self.next_token();
 
         let mut expression = InfixExpression {
@@ -285,13 +277,8 @@ impl Parser {
 
         let precedence = self.cur_precedence();
         self.next_token();
-        match self.parse_expression(precedence) {
-            Some(right) => {
-                expression.right = Box::new(right);
-                Some(ExpressionNode::Infix(expression))
-            }
-            None => None,
-        }
+        expression.right = Box::new(self.parse_expression(precedence));
+        ExpressionNode::Infix(expression)
     }
 
     fn register_prefix(&mut self, token_kind: TokenKind, func: PrefixParseFn) {
@@ -310,26 +297,26 @@ impl Parser {
         precedence_map(&self.cur_token.kind)
     }
 
-    fn parse_boolean(&mut self) -> Option<ExpressionNode> {
-        Some(ExpressionNode::BooleanNode(Boolean {
+    fn parse_boolean(&mut self) -> ExpressionNode {
+        ExpressionNode::BooleanNode(Boolean {
             token: self.cur_token.clone(),
             value: self.cur_token_is(TokenKind::True),
-        }))
+        })
     }
 
-    fn parse_grouped_expression(&mut self) -> Option<ExpressionNode> {
+    fn parse_grouped_expression(&mut self) -> ExpressionNode {
         self.next_token();
 
         let exp = self.parse_expression(PrecedenceLevel::Lowest);
 
         if !self.expect_peek(TokenKind::RParen) {
-            return None;
+            return ExpressionNode::None;
         }
 
         exp
     }
 
-    fn parse_if_expression(&mut self) -> Option<ExpressionNode> {
+    fn parse_if_expression(&mut self) -> ExpressionNode {
         let mut expression = IfExpression {
             token: self.cur_token.clone(),
             alternative: None,
@@ -338,22 +325,19 @@ impl Parser {
         };
 
         if !self.expect_peek(TokenKind::LParen) {
-            return None;
+            return ExpressionNode::None;
         }
 
         self.next_token();
 
-        expression.condition = Box::new(
-            self.parse_expression(PrecedenceLevel::Lowest)
-                .expect("error parsing condition"),
-        );
+        expression.condition = Box::new(self.parse_expression(PrecedenceLevel::Lowest));
 
         if !self.expect_peek(TokenKind::RParen) {
-            return None;
+            return ExpressionNode::None;
         }
 
         if !self.expect_peek(TokenKind::LBrace) {
-            return None;
+            return ExpressionNode::None;
         }
 
         expression.consequence = self.parse_block_statement();
@@ -362,13 +346,13 @@ impl Parser {
             self.next_token();
 
             if !self.expect_peek(TokenKind::LBrace) {
-                return None;
+                return ExpressionNode::None;
             }
 
             expression.alternative = Some(self.parse_block_statement());
         }
 
-        Some(ExpressionNode::IfExpressionNode(expression))
+        ExpressionNode::IfExpressionNode(expression)
     }
 
     fn parse_block_statement(&mut self) -> BlockStatement {
@@ -388,7 +372,7 @@ impl Parser {
 
         block
     }
-    fn parse_function_literal(&mut self) -> Option<ExpressionNode> {
+    fn parse_function_literal(&mut self) -> ExpressionNode {
         let mut func_lit = FunctionLiteral {
             token: self.cur_token.clone(),
             parameters: Vec::new(),
@@ -396,7 +380,7 @@ impl Parser {
         };
 
         if !self.expect_peek(TokenKind::LParen) {
-            return None;
+            return ExpressionNode::None;
         }
 
         func_lit.parameters = self
@@ -404,31 +388,31 @@ impl Parser {
             .expect("error parsing parameters");
 
         if !self.expect_peek(TokenKind::LBrace) {
-            return None;
+            return ExpressionNode::None;
         }
 
         func_lit.body = self.parse_block_statement();
 
-        Some(ExpressionNode::Function(func_lit))
+        ExpressionNode::Function(func_lit)
     }
 
-    fn parse_string_literal(&mut self) -> Option<ExpressionNode> {
-        Some(ExpressionNode::StringExp(StringLiteral {
+    fn parse_string_literal(&mut self) -> ExpressionNode {
+        ExpressionNode::StringExp(StringLiteral {
             token: self.cur_token.clone(),
             value: self.cur_token.literal.clone(),
-        }))
+        })
     }
 
-    fn parse_array_literal(&mut self) -> Option<ExpressionNode> {
+    fn parse_array_literal(&mut self) -> ExpressionNode {
         let array_literal = ArrayLiteral {
             token: self.cur_token.clone(),
             elements: self.parse_expression_list(TokenKind::RBracket),
         };
 
-        Some(ExpressionNode::Array(array_literal))
+        ExpressionNode::Array(array_literal)
     }
 
-    fn parse_hash_literal(&mut self) -> Option<ExpressionNode> {
+    fn parse_hash_literal(&mut self) -> ExpressionNode {
         let mut hash = HashLiteral {
             token: self.cur_token.clone(),
             pairs: Default::default(),
@@ -437,32 +421,28 @@ impl Parser {
         while !self.peek_token_is(&TokenKind::RBrace) {
             self.next_token();
 
-            let key = self
-                .parse_expression(PrecedenceLevel::Lowest)
-                .expect("error parsing hash key expression");
+            let key = self.parse_expression(PrecedenceLevel::Lowest);
 
             if !self.expect_peek(TokenKind::Colon) {
-                return None;
+                return ExpressionNode::None;
             }
 
             self.next_token();
 
-            let value = self
-                .parse_expression(PrecedenceLevel::Lowest)
-                .expect("error parsing hash value expression");
+            let value = self.parse_expression(PrecedenceLevel::Lowest);
 
             hash.pairs.push((key, value));
 
             if !self.peek_token_is(&TokenKind::RBrace) && !self.expect_peek(TokenKind::Comma) {
-                return None;
+                return ExpressionNode::None;
             }
         }
 
         if !self.expect_peek(TokenKind::RBrace) {
-            return None;
+            return ExpressionNode::None;
         }
 
-        Some(ExpressionNode::Hash(hash))
+        ExpressionNode::Hash(hash)
     }
 
     fn parse_function_parameters(&mut self) -> Option<Vec<Identifier>> {
@@ -499,7 +479,7 @@ impl Parser {
         Some(identifiers)
     }
 
-    fn parse_call_expression(&mut self, function: ExpressionNode) -> Option<ExpressionNode> {
+    fn parse_call_expression(&mut self, function: ExpressionNode) -> ExpressionNode {
         self.next_token();
         let mut exp = CallExpression {
             token: self.cur_token.clone(),
@@ -509,10 +489,10 @@ impl Parser {
 
         exp.arguments = self.parse_expression_list(TokenKind::RParen);
 
-        Some(ExpressionNode::Call(exp))
+        ExpressionNode::Call(exp)
     }
 
-    fn parse_index_expression(&mut self, left: ExpressionNode) -> Option<ExpressionNode> {
+    fn parse_index_expression(&mut self, left: ExpressionNode) -> ExpressionNode {
         self.next_token(); //consume the [
 
         let mut exp = IndexExpression {
@@ -523,16 +503,13 @@ impl Parser {
 
         self.next_token();
 
-        exp.index = Box::new(
-            self.parse_expression(PrecedenceLevel::Lowest)
-                .expect("error parsing index expression"),
-        );
+        exp.index = Box::new(self.parse_expression(PrecedenceLevel::Lowest));
 
         if !self.expect_peek(TokenKind::RBracket) {
-            return None;
+            return ExpressionNode::None;
         }
 
-        Some(ExpressionNode::Index(exp))
+        ExpressionNode::Index(exp)
     }
 
     fn parse_expression_list(&mut self, end_token: TokenKind) -> Vec<ExpressionNode> {
@@ -545,18 +522,12 @@ impl Parser {
 
         self.next_token();
 
-        node_elements.push(
-            self.parse_expression(PrecedenceLevel::Lowest)
-                .expect("error parsing arguments"),
-        );
+        node_elements.push(self.parse_expression(PrecedenceLevel::Lowest));
 
         while self.peek_token_is(&TokenKind::Comma) {
             self.next_token();
             self.next_token();
-            node_elements.push(
-                self.parse_expression(PrecedenceLevel::Lowest)
-                    .expect("error parsing arguments"),
-            );
+            node_elements.push(self.parse_expression(PrecedenceLevel::Lowest));
         }
 
         if !self.expect_peek(end_token) {
@@ -605,13 +576,7 @@ mod tests {
 
             match stmt {
                 StatementNode::Let(let_stmt) => {
-                    test_literal_expression(
-                        let_stmt
-                            .value
-                            .as_ref()
-                            .expect("error parsing value of let statement"),
-                        test.2,
-                    );
+                    test_literal_expression(&let_stmt.value, test.2);
                 }
                 other => {
                     panic!("stmt not LetStatement. got={:?}", other);
@@ -653,13 +618,7 @@ mod tests {
                         "token literal not `return`, got={}",
                         return_stmt.token_literal()
                     );
-                    test_literal_expression(
-                        return_stmt
-                            .return_value
-                            .as_ref()
-                            .expect("error parsing return value"),
-                        test.1,
-                    );
+                    test_literal_expression(&return_stmt.return_value, test.1);
                 }
                 other => {
                     panic!("stmt not ReturnStatement. got={:?}", other);
@@ -690,29 +649,25 @@ mod tests {
 
                 let stmt = &program.statements[0];
                 match stmt {
-                    StatementNode::Expression(exp_stmt) => {
-                        assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+                    StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                        ExpressionNode::IdentifierNode(ident) => {
+                            assert_eq!(
+                                ident.value, "foobar",
+                                "ident.value not 'foobar'. got={}",
+                                ident.value
+                            );
 
-                        match exp_stmt.expression.as_ref().unwrap() {
-                            ExpressionNode::IdentifierNode(ident) => {
-                                assert_eq!(
-                                    ident.value, "foobar",
-                                    "ident.value not 'foobar'. got={}",
-                                    ident.value
-                                );
-
-                                assert_eq!(
-                                    ident.token_literal(),
-                                    "foobar",
-                                    "ident.token_literal() not 'foobar'. got={}",
-                                    ident.token_literal()
-                                );
-                            }
-                            other => {
-                                panic!("exp not Identifier. got={:?}", other);
-                            }
+                            assert_eq!(
+                                ident.token_literal(),
+                                "foobar",
+                                "ident.token_literal() not 'foobar'. got={}",
+                                ident.token_literal()
+                            );
                         }
-                    }
+                        other => {
+                            panic!("exp not Identifier. got={:?}", other);
+                        }
+                    },
 
                     other => {
                         panic!("stmt not ExpressionStatement. got={:?}", other);
@@ -747,29 +702,25 @@ mod tests {
 
                 let stmt = &program.statements[0];
                 match stmt {
-                    StatementNode::Expression(exp_stmt) => {
-                        assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+                    StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                        ExpressionNode::Integer(integer) => {
+                            assert_eq!(
+                                integer.value, 5,
+                                "integer.value not 5. got={}",
+                                integer.value
+                            );
 
-                        match exp_stmt.expression.as_ref().unwrap() {
-                            ExpressionNode::Integer(integer) => {
-                                assert_eq!(
-                                    integer.value, 5,
-                                    "integer.value not 5. got={}",
-                                    integer.value
-                                );
-
-                                assert_eq!(
-                                    integer.token_literal(),
-                                    "5",
-                                    "integer.token_literal() not '5'. got={}",
-                                    integer.token_literal()
-                                );
-                            }
-                            other => {
-                                panic!("exp not IntegerLiteral. got={:?}", other);
-                            }
+                            assert_eq!(
+                                integer.token_literal(),
+                                "5",
+                                "integer.token_literal() not '5'. got={}",
+                                integer.token_literal()
+                            );
                         }
-                    }
+                        other => {
+                            panic!("exp not IntegerLiteral. got={:?}", other);
+                        }
+                    },
 
                     other => {
                         panic!("stmt not ExpressionStatement. got={:?}", other);
@@ -807,31 +758,27 @@ mod tests {
             );
 
             match &program.statements[0] {
-                StatementNode::Expression(exp_stmt) => {
-                    assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
-
-                    match exp_stmt.expression.as_ref().unwrap() {
-                        ExpressionNode::Prefix(prefix_exp) => {
-                            assert_eq!(
-                                prefix_exp.token_literal(),
-                                test.1,
-                                "prefix_exp
+                StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                    ExpressionNode::Prefix(prefix_exp) => {
+                        assert_eq!(
+                            prefix_exp.token_literal(),
+                            test.1,
+                            "prefix_exp
                                 .token_literal() is not '{}'. got={}",
-                                test.1,
-                                prefix_exp.token_literal()
-                            );
+                            test.1,
+                            prefix_exp.token_literal()
+                        );
 
-                            test_literal_expression(&prefix_exp.right, test.2);
-                        }
-                        other => {
-                            panic!(
-                                "prefix_exp
-                             not Prefix. got={:?}",
-                                other
-                            );
-                        }
+                        test_literal_expression(&prefix_exp.right, test.2);
                     }
-                }
+                    other => {
+                        panic!(
+                            "prefix_exp
+                             not Prefix. got={:?}",
+                            other
+                        );
+                    }
+                },
 
                 other => {
                     panic!("stmt not ExpressionStatement. got={:?}", other);
@@ -873,12 +820,10 @@ mod tests {
 
             match &program.statements[0] {
                 StatementNode::Expression(exp_stmt) => {
-                    assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
-
-                    let expression = exp_stmt.expression.as_ref().unwrap();
+                    let expression = &exp_stmt.expression;
 
                     test_infix_expression(
-                        &expression,
+                        expression,
                         Box::new(test.1),
                         test.2.to_string(),
                         Box::new(test.3),
@@ -976,32 +921,28 @@ mod tests {
 
         for (index, test) in expected_values.into_iter().enumerate() {
             match &program.statements[index] {
-                StatementNode::Expression(exp_stmt) => {
-                    assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+                StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                    ExpressionNode::BooleanNode(boolean) => {
+                        assert_eq!(
+                            boolean.token.kind,
+                            test.0,
+                            "boolean.kind not {}. got={}",
+                            TokenKind::True,
+                            boolean.token.kind
+                        );
 
-                    match exp_stmt.expression.as_ref().unwrap() {
-                        ExpressionNode::BooleanNode(boolean) => {
-                            assert_eq!(
-                                boolean.token.kind,
-                                test.0,
-                                "boolean.kind not {}. got={}",
-                                TokenKind::True,
-                                boolean.token.kind
-                            );
-
-                            assert_eq!(
-                                boolean.token_literal(),
-                                test.1,
-                                "boolean.token_literal() not '{}'. got={}",
-                                test.1,
-                                boolean.token_literal()
-                            );
-                        }
-                        other => {
-                            panic!("exp not Boolean. got={:?}", other);
-                        }
+                        assert_eq!(
+                            boolean.token_literal(),
+                            test.1,
+                            "boolean.token_literal() not '{}'. got={}",
+                            test.1,
+                            boolean.token_literal()
+                        );
                     }
-                }
+                    other => {
+                        panic!("exp not Boolean. got={:?}", other);
+                    }
+                },
 
                 other => {
                     panic!("stmt not ExpressionStatement. got={:?}", other);
@@ -1031,47 +972,37 @@ mod tests {
         );
 
         match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::IfExpressionNode(if_exp) => {
+                    test_infix_expression(
+                        &if_exp.condition,
+                        Box::new("x"),
+                        String::from("<"),
+                        Box::new("y"),
+                    );
 
-                match exp_stmt.expression.as_ref().unwrap() {
-                    ExpressionNode::IfExpressionNode(if_exp) => {
-                        test_infix_expression(
-                            &if_exp.condition,
-                            Box::new("x"),
-                            String::from("<"),
-                            Box::new("y"),
-                        );
+                    assert_eq!(
+                        if_exp.consequence.statements.len(),
+                        1,
+                        "consequence is not 1 statements. got={}",
+                        if_exp.consequence.statements.len()
+                    );
 
-                        assert_eq!(
-                            if_exp.consequence.statements.len(),
-                            1,
-                            "consequence is not 1 statements. got={}",
-                            if_exp.consequence.statements.len()
-                        );
-
-                        match &if_exp.consequence.statements[0] {
-                            StatementNode::Expression(consequence) => {
-                                test_identifier(
-                                    consequence
-                                        .expression
-                                        .as_ref()
-                                        .expect("Error parsing consequence"),
-                                    "x".to_string(),
-                                );
-                            }
-                            other => {
-                                panic!("stmt not ExpressionStatement. got={:?}", other);
-                            }
+                    match &if_exp.consequence.statements[0] {
+                        StatementNode::Expression(consequence) => {
+                            test_identifier(&consequence.expression, "x".to_string());
                         }
+                        other => {
+                            panic!("stmt not ExpressionStatement. got={:?}", other);
+                        }
+                    }
 
-                        assert!(if_exp.alternative.is_none(), "alternative is not None");
-                    }
-                    other => {
-                        panic!("exp not IfExpression. got={:?}", other);
-                    }
+                    assert!(if_exp.alternative.is_none(), "alternative is not None");
                 }
-            }
+                other => {
+                    panic!("exp not IfExpression. got={:?}", other);
+                }
+            },
 
             other => {
                 panic!("stmt not ExpressionStatement. got={:?}", other);
@@ -1099,67 +1030,51 @@ mod tests {
         );
 
         match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::IfExpressionNode(if_exp) => {
+                    test_infix_expression(
+                        &if_exp.condition,
+                        Box::new("x"),
+                        String::from("<"),
+                        Box::new("y"),
+                    );
 
-                match exp_stmt.expression.as_ref().unwrap() {
-                    ExpressionNode::IfExpressionNode(if_exp) => {
-                        test_infix_expression(
-                            &if_exp.condition,
-                            Box::new("x"),
-                            String::from("<"),
-                            Box::new("y"),
-                        );
+                    assert_eq!(
+                        if_exp.consequence.statements.len(),
+                        1,
+                        "consequence is not 1 statements. got={}",
+                        if_exp.consequence.statements.len()
+                    );
 
-                        assert_eq!(
-                            if_exp.consequence.statements.len(),
-                            1,
-                            "consequence is not 1 statements. got={}",
-                            if_exp.consequence.statements.len()
-                        );
+                    assert_eq!(
+                        if_exp.alternative.as_ref().unwrap().statements.len(),
+                        1,
+                        "alternative is not 1 statements. got={}",
+                        if_exp.alternative.as_ref().unwrap().statements.len()
+                    );
 
-                        assert_eq!(
-                            if_exp.alternative.as_ref().unwrap().statements.len(),
-                            1,
-                            "alternative is not 1 statements. got={}",
-                            if_exp.alternative.as_ref().unwrap().statements.len()
-                        );
-
-                        match &if_exp.consequence.statements[0] {
-                            StatementNode::Expression(consequence) => {
-                                test_identifier(
-                                    consequence
-                                        .expression
-                                        .as_ref()
-                                        .expect("Error parsing consequence"),
-                                    "x".to_string(),
-                                );
-                            }
-                            other => {
-                                panic!("stmt not ExpressionStatement. got={:?}", other);
-                            }
+                    match &if_exp.consequence.statements[0] {
+                        StatementNode::Expression(consequence) => {
+                            test_identifier(&consequence.expression, "x".to_string());
                         }
-
-                        match &if_exp.alternative.as_ref().unwrap().statements[0] {
-                            StatementNode::Expression(alternative) => {
-                                test_identifier(
-                                    alternative
-                                        .expression
-                                        .as_ref()
-                                        .expect("Error parsing alternative"),
-                                    "y".to_string(),
-                                );
-                            }
-                            other => {
-                                panic!("stmt not ExpressionStatement. got={:?}", other);
-                            }
+                        other => {
+                            panic!("stmt not ExpressionStatement. got={:?}", other);
                         }
                     }
-                    other => {
-                        panic!("exp not IfExpression. got={:?}", other);
+
+                    match &if_exp.alternative.as_ref().unwrap().statements[0] {
+                        StatementNode::Expression(alternative) => {
+                            test_identifier(&alternative.expression, "y".to_string());
+                        }
+                        other => {
+                            panic!("stmt not ExpressionStatement. got={:?}", other);
+                        }
                     }
                 }
-            }
+                other => {
+                    panic!("exp not IfExpression. got={:?}", other);
+                }
+            },
 
             other => {
                 panic!("stmt not ExpressionStatement. got={:?}", other);
@@ -1186,77 +1101,73 @@ mod tests {
         );
 
         match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::Function(function) => {
+                    assert_eq!(
+                        function.parameters.len(),
+                        2,
+                        "function literal parameters wrong. want 2. got={}",
+                        function.parameters.len()
+                    );
 
-                match exp_stmt.expression.as_ref().unwrap() {
-                    ExpressionNode::Function(function) => {
-                        assert_eq!(
-                            function.parameters.len(),
-                            2,
-                            "function literal parameters wrong. want 2. got={}",
-                            function.parameters.len()
-                        );
-
-                        match &function.parameters[0] {
-                            Identifier { token, value } => {
-                                assert_eq!(
-                                    value, "x",
-                                    "function literal parameter is not 'x'. got={}",
-                                    value
-                                );
-                                assert_eq!(
-                                    token.literal, "x",
-                                    "function literal parameter is not 'x'. got={}",
-                                    token.literal
-                                )
-                            }
-                        }
-
-                        match &function.parameters[1] {
-                            Identifier { token, value } => {
-                                assert_eq!(
-                                    value, "y",
-                                    "function literal parameter is not 'y'. got={}",
-                                    value
-                                );
-                                assert_eq!(
-                                    token.literal, "y",
-                                    "function literal parameter is not 'y'. got={}",
-                                    token.literal
-                                )
-                            }
-                        }
-
-                        assert_eq!(
-                            function.body.statements.len(),
-                            1,
-                            "function.body.statements has not 1 statements. got={}",
-                            function.body.statements.len()
-                        );
-
-                        match &function.body.statements[0] {
-                            StatementNode::Expression(body_exp) => {
-                                test_infix_expression(
-                                    &body_exp.expression.as_ref().unwrap(),
-                                    Box::new("x"),
-                                    "+".to_string(),
-                                    Box::new("y"),
-                                );
-                            }
-                            other => {
-                                panic!(
-                                    "function body stmt is not ExpressionStatement. got={:?}",
-                                    other
-                                );
-                            }
+                    match &function.parameters[0] {
+                        Identifier { token, value } => {
+                            assert_eq!(
+                                value, "x",
+                                "function literal parameter is not 'x'. got={}",
+                                value
+                            );
+                            assert_eq!(
+                                token.literal, "x",
+                                "function literal parameter is not 'x'. got={}",
+                                token.literal
+                            )
                         }
                     }
-                    other => {
-                        panic!("exp not FunctionLiteral. got={:?}", other);
+
+                    match &function.parameters[1] {
+                        Identifier { token, value } => {
+                            assert_eq!(
+                                value, "y",
+                                "function literal parameter is not 'y'. got={}",
+                                value
+                            );
+                            assert_eq!(
+                                token.literal, "y",
+                                "function literal parameter is not 'y'. got={}",
+                                token.literal
+                            )
+                        }
+                    }
+
+                    assert_eq!(
+                        function.body.statements.len(),
+                        1,
+                        "function.body.statements has not 1 statements. got={}",
+                        function.body.statements.len()
+                    );
+
+                    match &function.body.statements[0] {
+                        StatementNode::Expression(body_exp) => {
+                            test_infix_expression(
+                                &body_exp.expression,
+                                Box::new("x"),
+                                "+".to_string(),
+                                Box::new("y"),
+                            );
+                        }
+                        other => {
+                            panic!(
+                                "function body stmt is not ExpressionStatement. got={:?}",
+                                other
+                            );
+                        }
                     }
                 }
-            }
+                other => {
+                    panic!("exp not FunctionLiteral. got={:?}", other);
+                }
+            },
 
             other => {
                 panic!("stmt not ExpressionStatement. got={:?}", other);
@@ -1281,41 +1192,37 @@ mod tests {
             check_parser_errors(&parser);
 
             match &program.statements[0] {
-                StatementNode::Expression(exp_stmt) => {
-                    assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+                StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                    ExpressionNode::Function(function) => {
+                        assert_eq!(
+                            function.parameters.len(),
+                            test.1.len(),
+                            "length parameters wrong. want {}, got={}",
+                            test.1.len(),
+                            function.parameters.len()
+                        );
 
-                    match exp_stmt.expression.as_ref().unwrap() {
-                        ExpressionNode::Function(function) => {
-                            assert_eq!(
-                                function.parameters.len(),
-                                test.1.len(),
-                                "length parameters wrong. want {}, got={}",
-                                test.1.len(),
-                                function.parameters.len()
-                            );
-
-                            for (i, param) in test.1.into_iter().enumerate() {
-                                match &function.parameters[i] {
-                                    Identifier { token, value } => {
-                                        assert_eq!(
-                                            value, param,
-                                            "function literal parameter is not '{}'. got={}",
-                                            param, value
-                                        );
-                                        assert_eq!(
-                                            token.literal, param,
-                                            "function literal parameter is not '{}'. got={}",
-                                            param, token.literal
-                                        )
-                                    }
+                        for (i, param) in test.1.into_iter().enumerate() {
+                            match &function.parameters[i] {
+                                Identifier { token, value } => {
+                                    assert_eq!(
+                                        value, param,
+                                        "function literal parameter is not '{}'. got={}",
+                                        param, value
+                                    );
+                                    assert_eq!(
+                                        token.literal, param,
+                                        "function literal parameter is not '{}'. got={}",
+                                        param, token.literal
+                                    )
                                 }
                             }
                         }
-                        other => {
-                            panic!("exp not FunctionLiteral. got={:?}", other);
-                        }
                     }
-                }
+                    other => {
+                        panic!("exp not FunctionLiteral. got={:?}", other);
+                    }
+                },
 
                 other => {
                     panic!("stmt not ExpressionStatement. got={:?}", other);
@@ -1343,39 +1250,35 @@ mod tests {
         );
 
         match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::Call(call_exp) => {
+                    test_identifier(&call_exp.function, "add".to_string());
 
-                match exp_stmt.expression.as_ref().unwrap() {
-                    ExpressionNode::Call(call_exp) => {
-                        test_identifier(&call_exp.function, "add".to_string());
+                    assert_eq!(
+                        call_exp.arguments.len(),
+                        3,
+                        "wrong length of arguments. got={}",
+                        call_exp.arguments.len()
+                    );
 
-                        assert_eq!(
-                            call_exp.arguments.len(),
-                            3,
-                            "wrong length of arguments. got={}",
-                            call_exp.arguments.len()
-                        );
-
-                        test_literal_expression(&call_exp.arguments[0], Box::new(1));
-                        test_infix_expression(
-                            &call_exp.arguments[1],
-                            Box::new(2),
-                            "*".to_string(),
-                            Box::new(3),
-                        );
-                        test_infix_expression(
-                            &call_exp.arguments[2],
-                            Box::new(4),
-                            "+".to_string(),
-                            Box::new(5),
-                        );
-                    }
-                    other => {
-                        panic!("exp not CallExpression. got={:?}", other);
-                    }
+                    test_literal_expression(&call_exp.arguments[0], Box::new(1));
+                    test_infix_expression(
+                        &call_exp.arguments[1],
+                        Box::new(2),
+                        "*".to_string(),
+                        Box::new(3),
+                    );
+                    test_infix_expression(
+                        &call_exp.arguments[2],
+                        Box::new(4),
+                        "+".to_string(),
+                        Box::new(5),
+                    );
                 }
-            }
+                other => {
+                    panic!("exp not CallExpression. got={:?}", other);
+                }
+            },
 
             other => {
                 panic!("stmt not ExpressionStatement. got={:?}", other);
@@ -1402,29 +1305,25 @@ mod tests {
         );
 
         match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::StringExp(string_literal) => {
+                    assert_eq!(
+                        string_literal.value, "Hello, World!",
+                        "string_literal.value not 'Hello, World!'. got={}",
+                        string_literal.value
+                    );
 
-                match exp_stmt.expression.as_ref().unwrap() {
-                    ExpressionNode::StringExp(string_literal) => {
-                        assert_eq!(
-                            string_literal.value, "Hello, World!",
-                            "string_literal.value not 'Hello, World!'. got={}",
-                            string_literal.value
-                        );
-
-                        assert_eq!(
-                            string_literal.token_literal(),
-                            "Hello, World!",
-                            "string_literal.token_literal() not 'Hello, World!'. got={}",
-                            string_literal.token_literal()
-                        );
-                    }
-                    other => {
-                        panic!("exp not StringLiteral. got={:?}", other);
-                    }
+                    assert_eq!(
+                        string_literal.token_literal(),
+                        "Hello, World!",
+                        "string_literal.token_literal() not 'Hello, World!'. got={}",
+                        string_literal.token_literal()
+                    );
                 }
-            }
+                other => {
+                    panic!("exp not StringLiteral. got={:?}", other);
+                }
+            },
 
             other => {
                 panic!("stmt not ExpressionStatement. got={:?}", other);
@@ -1444,39 +1343,31 @@ mod tests {
         check_parser_errors(&parser);
 
         match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::Array(array_literal) => {
+                    assert_eq!(
+                        array_literal.elements.len(),
+                        3,
+                        "array_literal.elements has wrong length. got={}",
+                        array_literal.elements.len()
+                    );
 
-                match &exp_stmt
-                    .expression
-                    .as_ref()
-                    .expect("Error parsing expression for array literal")
-                {
-                    ExpressionNode::Array(array_literal) => {
-                        assert_eq!(
-                            array_literal.elements.len(),
-                            3,
-                            "array_literal.elements has wrong length. got={}",
-                            array_literal.elements.len()
-                        );
-
-                        test_integer_literal(&array_literal.elements[0], 1);
-                        test_infix_expression(
-                            &array_literal.elements[1],
-                            Box::new(2),
-                            "*".to_string(),
-                            Box::new(2),
-                        );
-                        test_infix_expression(
-                            &array_literal.elements[2],
-                            Box::new(3),
-                            "+".to_string(),
-                            Box::new(3),
-                        );
-                    }
-                    other => panic!("exp not ArrayLiteral. got={:?}", other),
+                    test_integer_literal(&array_literal.elements[0], 1);
+                    test_infix_expression(
+                        &array_literal.elements[1],
+                        Box::new(2),
+                        "*".to_string(),
+                        Box::new(2),
+                    );
+                    test_infix_expression(
+                        &array_literal.elements[2],
+                        Box::new(3),
+                        "+".to_string(),
+                        Box::new(3),
+                    );
                 }
-            }
+                other => panic!("exp not ArrayLiteral. got={:?}", other),
+            },
             other => panic!("stmt not ExpressionStatement. got={:?}", other),
         }
     }
@@ -1493,26 +1384,18 @@ mod tests {
         check_parser_errors(&parser);
 
         match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
-
-                match &exp_stmt
-                    .expression
-                    .as_ref()
-                    .expect("Error parsing expression for index expression")
-                {
-                    ExpressionNode::Index(index_exp) => {
-                        test_identifier(&index_exp.left, "myArray".to_string());
-                        test_infix_expression(
-                            &index_exp.index,
-                            Box::new(1),
-                            "+".to_string(),
-                            Box::new(1),
-                        );
-                    }
-                    other => panic!("exp not IndexExpression. got={:?}", other),
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::Index(index_exp) => {
+                    test_identifier(&index_exp.left, "myArray".to_string());
+                    test_infix_expression(
+                        &index_exp.index,
+                        Box::new(1),
+                        "+".to_string(),
+                        Box::new(1),
+                    );
                 }
-            }
+                other => panic!("exp not IndexExpression. got={:?}", other),
+            },
             other => panic!("stmt not ExpressionStatement. got={:?}", other),
         }
     }
@@ -1529,38 +1412,30 @@ mod tests {
         check_parser_errors(&parser);
 
         match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::Hash(hash_literal) => {
+                    assert_eq!(
+                        hash_literal.pairs.len(),
+                        3,
+                        "hash_literal.pairs.len() wrong. got={}",
+                        hash_literal.pairs.len()
+                    );
 
-                match &exp_stmt
-                    .expression
-                    .as_ref()
-                    .expect("Error parsing expression for hash literal")
-                {
-                    ExpressionNode::Hash(hash_literal) => {
-                        assert_eq!(
-                            hash_literal.pairs.len(),
-                            3,
-                            "hash_literal.pairs.len() wrong. got={}",
-                            hash_literal.pairs.len()
-                        );
+                    let expected = vec![
+                        ("one".to_string(), 1),
+                        ("two".to_string(), 2),
+                        ("three".to_string(), 3),
+                    ];
+                    let mut curr_idx: usize = 0;
 
-                        let expected = vec![
-                            ("one".to_string(), 1),
-                            ("two".to_string(), 2),
-                            ("three".to_string(), 3),
-                        ];
-                        let mut curr_idx: usize = 0;
-
-                        for (_, value) in &hash_literal.pairs {
-                            let expected_value = expected[curr_idx].1;
-                            test_integer_literal(value, expected_value);
-                            curr_idx += 1;
-                        }
+                    for (_, value) in &hash_literal.pairs {
+                        let expected_value = expected[curr_idx].1;
+                        test_integer_literal(value, expected_value);
+                        curr_idx += 1;
                     }
-                    other => panic!("exp not HashLiteral. got={:?}", other),
                 }
-            }
+                other => panic!("exp not HashLiteral. got={:?}", other),
+            },
             other => panic!("stmt not ExpressionStatement. got={:?}", other),
         }
     }
@@ -1576,25 +1451,17 @@ mod tests {
         check_parser_errors(&parser);
 
         match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
-
-                match &exp_stmt
-                    .expression
-                    .as_ref()
-                    .expect("Error parsing expression for hash literal")
-                {
-                    ExpressionNode::Hash(hash_literal) => {
-                        assert_eq!(
-                            hash_literal.pairs.len(),
-                            0,
-                            "hash_literal.pairs.len() wrong. got={}",
-                            hash_literal.pairs.len()
-                        );
-                    }
-                    other => panic!("exp not HashLiteral. got={:?}", other),
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::Hash(hash_literal) => {
+                    assert_eq!(
+                        hash_literal.pairs.len(),
+                        0,
+                        "hash_literal.pairs.len() wrong. got={}",
+                        hash_literal.pairs.len()
+                    );
                 }
-            }
+                other => panic!("exp not HashLiteral. got={:?}", other),
+            },
             other => panic!("stmt not ExpressionStatement. got={:?}", other),
         }
     }
@@ -1610,43 +1477,35 @@ mod tests {
         check_parser_errors(&parser);
 
         match &program.statements[0] {
-            StatementNode::Expression(exp_stmt) => {
-                assert!(exp_stmt.expression.is_some(), "exp_stmt.expression is None");
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::Hash(hash_literal) => {
+                    assert_eq!(
+                        hash_literal.pairs.len(),
+                        3,
+                        "hash_literal.pairs.len() wrong. got={}",
+                        hash_literal.pairs.len()
+                    );
 
-                match &exp_stmt
-                    .expression
-                    .as_ref()
-                    .expect("Error parsing expression for hash literal")
-                {
-                    ExpressionNode::Hash(hash_literal) => {
-                        assert_eq!(
-                            hash_literal.pairs.len(),
-                            3,
-                            "hash_literal.pairs.len() wrong. got={}",
-                            hash_literal.pairs.len()
+                    let expected = vec![
+                        ("one".to_string(), (0, "+", 1)),
+                        ("two".to_string(), (10, "-", 8)),
+                        ("three".to_string(), (15, "/", 5)),
+                    ];
+                    let mut curr_idx: usize = 0;
+
+                    for (_, value) in &hash_literal.pairs {
+                        let expected_value = &expected[curr_idx];
+                        test_func_for_key(
+                            value,
+                            expected_value.1 .0,
+                            expected_value.1 .1,
+                            expected_value.1 .2,
                         );
-
-                        let expected = vec![
-                            ("one".to_string(), (0, "+", 1)),
-                            ("two".to_string(), (10, "-", 8)),
-                            ("three".to_string(), (15, "/", 5)),
-                        ];
-                        let mut curr_idx: usize = 0;
-
-                        for (_, value) in &hash_literal.pairs {
-                            let expected_value = &expected[curr_idx];
-                            test_func_for_key(
-                                value,
-                                expected_value.1 .0,
-                                expected_value.1 .1,
-                                expected_value.1 .2,
-                            );
-                            curr_idx += 1;
-                        }
+                        curr_idx += 1;
                     }
-                    other => panic!("exp not HashLiteral. got={:?}", other),
                 }
-            }
+                other => panic!("exp not HashLiteral. got={:?}", other),
+            },
             other => panic!("stmt not ExpressionStatement. got={:?}", other),
         }
     }

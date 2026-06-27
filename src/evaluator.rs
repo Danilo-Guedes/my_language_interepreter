@@ -58,99 +58,94 @@ impl Evaluator {
         }
     }
 
-    fn eval_expression(&mut self, expression: Option<ExpressionNode>) -> Object {
-        if let Some(expr) = expression {
-            return match expr {
-                ExpressionNode::Integer(int) => Object::Integer(int.value),
-                ExpressionNode::BooleanNode(boolean) => {
-                    Self::native_bool_to_boolean_object(boolean.value)
+    fn eval_expression(&mut self, expression: ExpressionNode) -> Object {
+        match expression {
+            ExpressionNode::Integer(int) => Object::Integer(int.value),
+            ExpressionNode::BooleanNode(boolean) => {
+                Self::native_bool_to_boolean_object(boolean.value)
+            }
+            ExpressionNode::Prefix(prefix_exp) => {
+                let right: Object = self.eval_expression(*prefix_exp.right);
+                if Self::is_error(&right) {
+                    return right;
                 }
-                ExpressionNode::Prefix(prefix_exp) => {
-                    let right: Object = self.eval_expression(Some(*prefix_exp.right));
-                    if Self::is_error(&right) {
-                        return right;
-                    }
-                    Self::eval_prefix_expression(prefix_exp.operator, right)
+                Self::eval_prefix_expression(prefix_exp.operator, right)
+            }
+            ExpressionNode::Infix(inf_exp) => {
+                let left: Object = self.eval_expression(*inf_exp.left);
+                if Self::is_error(&left) {
+                    return left;
                 }
-                ExpressionNode::Infix(inf_exp) => {
-                    let left: Object = self.eval_expression(Some(*inf_exp.left));
-                    if Self::is_error(&left) {
-                        return left;
-                    }
-                    let right: Object = self.eval_expression(Some(*inf_exp.right));
-                    if Self::is_error(&right) {
-                        return right;
-                    }
-                    Self::eval_infix_expression(inf_exp.operator, &left, &right)
+                let right: Object = self.eval_expression(*inf_exp.right);
+                if Self::is_error(&right) {
+                    return right;
                 }
-                ExpressionNode::IfExpressionNode(if_exp) => self.eval_if_expression(if_exp),
-                ExpressionNode::IdentifierNode(ident) => self.eval_identifier(ident),
-                ExpressionNode::Function(fn_lit) => Object::Func(Function {
-                    parameters: fn_lit.parameters,
-                    body: fn_lit.body,
-                    env: self.env.clone(),
-                }),
-                ExpressionNode::Call(call_exp) => {
-                    let function = self.eval_expression(Some(call_exp.function.deref().clone()));
-                    if Self::is_error(&function) {
-                        return function;
-                    }
-                    let args = self.eval_expressions(call_exp.arguments);
+                Self::eval_infix_expression(inf_exp.operator, &left, &right)
+            }
+            ExpressionNode::IfExpressionNode(if_exp) => self.eval_if_expression(if_exp),
+            ExpressionNode::IdentifierNode(ident) => self.eval_identifier(ident),
+            ExpressionNode::Function(fn_lit) => Object::Func(Function {
+                parameters: fn_lit.parameters,
+                body: fn_lit.body,
+                env: self.env.clone(),
+            }),
+            ExpressionNode::Call(call_exp) => {
+                let function = self.eval_expression(call_exp.function.deref().clone());
+                if Self::is_error(&function) {
+                    return function;
+                }
+                let args = self.eval_expressions(call_exp.arguments);
 
-                    if args.len() == 1 && Self::is_error(&args[0]) {
-                        return args[0].clone();
-                    }
-
-                    self.apply_function(function, args)
+                if args.len() == 1 && Self::is_error(&args[0]) {
+                    return args[0].clone();
                 }
-                ExpressionNode::StringExp(string_literal) => {
-                    Object::StringObj(string_literal.value)
-                }
-                ExpressionNode::Array(array_literal) => {
-                    let elements = self.eval_expressions(array_literal.elements);
 
-                    if elements.len() == 1 && Self::is_error(&elements[0]) {
-                        return elements[0].clone();
-                    }
-                    Object::Array(elements)
-                }
-                ExpressionNode::Index(index_exp) => {
-                    let left = self.eval_expression(Some(*index_exp.left));
-                    if Self::is_error(&left) {
-                        return left;
-                    }
+                self.apply_function(function, args)
+            }
+            ExpressionNode::StringExp(string_literal) => Object::StringObj(string_literal.value),
+            ExpressionNode::Array(array_literal) => {
+                let elements = self.eval_expressions(array_literal.elements);
 
-                    let index = self.eval_expression(Some(*index_exp.index));
-                    if Self::is_error(&index) {
-                        return index;
-                    }
-
-                    self.eval_index_expression(left, index)
+                if elements.len() == 1 && Self::is_error(&elements[0]) {
+                    return elements[0].clone();
                 }
-                ExpressionNode::Hash(hash_literal) => {
-                    let mut pairs = HashMap::new();
-
-                    for (key_node, value_node) in hash_literal.pairs {
-                        let key = self.eval_expression(Some(key_node));
-                        if Self::is_error(&key) {
-                            return key;
-                        }
-                        let value = self.eval_expression(Some(value_node));
-                        if Self::is_error(&value) {
-                            return value;
-                        }
-                        let hash_key = match key.hash_key() {
-                            Ok(hash_key) => hash_key,
-                            Err(err) => return Object::Error(err),
-                        };
-                        pairs.insert(hash_key, HashPair { key, value });
-                    }
-                    Object::HashObj(HashStruct { pairs })
+                Object::Array(elements)
+            }
+            ExpressionNode::Index(index_exp) => {
+                let left = self.eval_expression(*index_exp.left);
+                if Self::is_error(&left) {
+                    return left;
                 }
-                _ => NULL,
-            };
+
+                let index = self.eval_expression(*index_exp.index);
+                if Self::is_error(&index) {
+                    return index;
+                }
+
+                self.eval_index_expression(left, index)
+            }
+            ExpressionNode::Hash(hash_literal) => {
+                let mut pairs = HashMap::new();
+
+                for (key_node, value_node) in hash_literal.pairs {
+                    let key = self.eval_expression(key_node);
+                    if Self::is_error(&key) {
+                        return key;
+                    }
+                    let value = self.eval_expression(value_node);
+                    if Self::is_error(&value) {
+                        return value;
+                    }
+                    let hash_key = match key.hash_key() {
+                        Ok(hash_key) => hash_key,
+                        Err(err) => return Object::Error(err),
+                    };
+                    pairs.insert(hash_key, HashPair { key, value });
+                }
+                Object::HashObj(HashStruct { pairs })
+            }
+            _ => NULL,
         }
-        NULL
     }
 
     fn eval_index_expression(&self, left: Object, index: Object) -> Object {
@@ -241,7 +236,7 @@ impl Evaluator {
         let mut result = Vec::new();
 
         for exp in expressions {
-            let evaluated = self.eval_expression(Some(exp));
+            let evaluated = self.eval_expression(exp);
             if Self::is_error(&evaluated) {
                 return vec![evaluated];
             }
@@ -315,7 +310,7 @@ impl Evaluator {
     }
 
     fn eval_if_expression(&mut self, if_exp: IfExpression) -> Object {
-        let condition = self.eval_expression(Some(*if_exp.condition));
+        let condition = self.eval_expression(*if_exp.condition);
 
         if Self::is_truthy(condition) {
             self.eval_block_statement(if_exp.consequence)

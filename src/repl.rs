@@ -1,6 +1,6 @@
-use crate::evaluator::Evaluator;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
+use crate::{evaluator::Evaluator, object::Object};
 use std::io::{Stdin, Stdout, Write};
 
 pub fn start(stdin: Stdin, mut stdout: Stdout) -> std::io::Result<()> {
@@ -39,7 +39,10 @@ pub fn start(stdin: Stdin, mut stdout: Stdout) -> std::io::Result<()> {
 
         let evaluated = evaluator.eval_program(program);
 
-        writeln!(stdout, "{}", evaluated)?;
+        match &evaluated {
+            Object::StringObj(s) => writeln!(stdout, "'{}'", s)?,
+            _ => writeln!(stdout, "{}", evaluated)?,
+        }
     }
 }
 

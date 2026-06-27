@@ -129,7 +129,7 @@ impl fmt::Display for Program {
 pub struct LetStatement {
     pub token: Token,
     pub name: Identifier,
-    pub value: Option<ExpressionNode>,
+    pub value: ExpressionNode,
 }
 
 impl Node for LetStatement {
@@ -145,9 +145,7 @@ impl fmt::Display for LetStatement {
         out.push(' ');
         out.push_str(self.name.to_string().as_str());
         out.push_str(" = ");
-        if let Some(value) = &self.value {
-            out.push_str(value.to_string().as_str());
-        }
+        out.push_str(self.value.to_string().as_str());
         out.push(';');
         write!(f, "{}", out)
     }
@@ -175,7 +173,7 @@ impl fmt::Display for Identifier {
 #[derive(Debug, Default, Clone)]
 pub struct ReturnStatement {
     pub token: Token,
-    pub return_value: Option<ExpressionNode>,
+    pub return_value: ExpressionNode,
 }
 
 impl Node for ReturnStatement {
@@ -189,9 +187,7 @@ impl fmt::Display for ReturnStatement {
         let mut out = String::new();
         out.push_str(self.token_literal().as_str());
         out.push(' ');
-        if let Some(return_value) = &self.return_value {
-            out.push_str(return_value.to_string().as_str());
-        }
+        out.push_str(self.return_value.to_string().as_str());
         out.push(';');
         write!(f, "{}", out)
     }
@@ -200,7 +196,7 @@ impl fmt::Display for ReturnStatement {
 #[derive(Debug, Default, Clone)]
 pub struct ExpressionStatement {
     pub token: Token,
-    pub expression: Option<ExpressionNode>,
+    pub expression: ExpressionNode,
 }
 
 impl Node for ExpressionStatement {
@@ -211,10 +207,7 @@ impl Node for ExpressionStatement {
 
 impl fmt::Display for ExpressionStatement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(expression) = &self.expression {
-            return write!(f, "{}", expression);
-        }
-        write!(f, "")
+        write!(f, "{}", self.expression)
     }
 }
 
@@ -232,7 +225,7 @@ impl Node for IntegerLiteral {
 
 impl fmt::Display for IntegerLiteral {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.token_literal())
+        write!(f, "{}", self.value)
     }
 }
 
@@ -530,13 +523,13 @@ mod test {
                     },
                     value: String::from("myVar"),
                 },
-                value: Some(ExpressionNode::IdentifierNode(Identifier {
+                value: ExpressionNode::IdentifierNode(Identifier {
                     token: Token {
                         kind: TokenKind::Ident,
                         literal: String::from("anotherVar"),
                     },
                     value: String::from("anotherVar"),
-                })),
+                }),
             })],
         };
 

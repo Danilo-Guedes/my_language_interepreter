@@ -78,8 +78,8 @@ impl Display for Object {
             Self::HashObj(hash) => {
                 let pairs = hash
                     .pairs
-                    .iter()
-                    .map(|(_, pair)| format!("{}: {}", pair.key, pair.value))
+                    .values()
+                    .map(|pair| format!("{}: {}", pair.key, pair.value))
                     .collect::<Vec<_>>()
                     .join(", ");
                 write!(f, "{{{}}}", pairs)
