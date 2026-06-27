@@ -92,7 +92,7 @@ impl Parser {
         self.peek_token = self.lexer.next_token();
     }
 
-    pub fn parse_program(&mut self) -> Option<Program> {
+    pub fn parse_program(&mut self) -> Program {
         let mut program = Program {
             statements: Vec::new(),
         };
@@ -104,7 +104,7 @@ impl Parser {
             self.next_token();
         }
 
-        Some(program)
+        program
     }
 
     fn expect_peek(&mut self, token_kind: TokenKind) -> bool {
@@ -559,7 +559,7 @@ mod tests {
             let lexer = Lexer::new(test.0);
             let mut parser = Parser::new(lexer);
 
-            let program = parser.parse_program().unwrap();
+            let program = parser.parse_program();
 
             check_parser_errors(&parser);
 
@@ -597,7 +597,7 @@ mod tests {
             let lexer = Lexer::new(test.0);
             let mut parser = Parser::new(lexer);
 
-            let program = parser.parse_program().unwrap();
+            let program = parser.parse_program();
 
             check_parser_errors(&parser);
 
@@ -638,46 +638,39 @@ mod tests {
 
         check_parser_errors(&parser);
 
-        match program {
-            Some(program) => {
-                assert_eq!(
-                    program.statements.len(),
-                    1,
-                    "program has not enough statements. got={}",
-                    program.statements.len()
-                );
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "program has not enough statements. got={}",
+            program.statements.len()
+        );
 
-                let stmt = &program.statements[0];
-                match stmt {
-                    StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
-                        ExpressionNode::IdentifierNode(ident) => {
-                            assert_eq!(
-                                ident.value, "foobar",
-                                "ident.value not 'foobar'. got={}",
-                                ident.value
-                            );
+        let stmt = &program.statements[0];
+        match stmt {
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::IdentifierNode(ident) => {
+                    assert_eq!(
+                        ident.value, "foobar",
+                        "ident.value not 'foobar'. got={}",
+                        ident.value
+                    );
 
-                            assert_eq!(
-                                ident.token_literal(),
-                                "foobar",
-                                "ident.token_literal() not 'foobar'. got={}",
-                                ident.token_literal()
-                            );
-                        }
-                        other => {
-                            panic!("exp not Identifier. got={:?}", other);
-                        }
-                    },
-
-                    other => {
-                        panic!("stmt not ExpressionStatement. got={:?}", other);
-                    }
+                    assert_eq!(
+                        ident.token_literal(),
+                        "foobar",
+                        "ident.token_literal() not 'foobar'. got={}",
+                        ident.token_literal()
+                    );
                 }
+                other => {
+                    panic!("exp not Identifier. got={:?}", other);
+                }
+            },
+
+            other => {
+                panic!("stmt not ExpressionStatement. got={:?}", other);
             }
-            None => {
-                panic!("parse_program() returned None")
-            }
-        };
+        }
     }
 
     #[test]
@@ -691,46 +684,39 @@ mod tests {
 
         check_parser_errors(&parser);
 
-        match program {
-            Some(program) => {
-                assert_eq!(
-                    program.statements.len(),
-                    1,
-                    "program has not enough statements. got={}",
-                    program.statements.len()
-                );
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "program has not enough statements. got={}",
+            program.statements.len()
+        );
 
-                let stmt = &program.statements[0];
-                match stmt {
-                    StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
-                        ExpressionNode::Integer(integer) => {
-                            assert_eq!(
-                                integer.value, 5,
-                                "integer.value not 5. got={}",
-                                integer.value
-                            );
+        let stmt = &program.statements[0];
+        match stmt {
+            StatementNode::Expression(exp_stmt) => match &exp_stmt.expression {
+                ExpressionNode::Integer(integer) => {
+                    assert_eq!(
+                        integer.value, 5,
+                        "integer.value not 5. got={}",
+                        integer.value
+                    );
 
-                            assert_eq!(
-                                integer.token_literal(),
-                                "5",
-                                "integer.token_literal() not '5'. got={}",
-                                integer.token_literal()
-                            );
-                        }
-                        other => {
-                            panic!("exp not IntegerLiteral. got={:?}", other);
-                        }
-                    },
-
-                    other => {
-                        panic!("stmt not ExpressionStatement. got={:?}", other);
-                    }
+                    assert_eq!(
+                        integer.token_literal(),
+                        "5",
+                        "integer.token_literal() not '5'. got={}",
+                        integer.token_literal()
+                    );
                 }
+                other => {
+                    panic!("exp not IntegerLiteral. got={:?}", other);
+                }
+            },
+
+            other => {
+                panic!("stmt not ExpressionStatement. got={:?}", other);
             }
-            None => {
-                panic!("parse_program() returned None")
-            }
-        };
+        }
     }
 
     #[test]
@@ -746,7 +732,7 @@ mod tests {
             let lexer = Lexer::new(test.0);
             let mut parser = Parser::new(lexer);
 
-            let program = parser.parse_program().unwrap();
+            let program = parser.parse_program();
 
             check_parser_errors(&parser);
 
@@ -807,7 +793,7 @@ mod tests {
             let lexer = Lexer::new(test.0);
             let mut parser = Parser::new(lexer);
 
-            let program = parser.parse_program().unwrap();
+            let program = parser.parse_program();
 
             check_parser_errors(&parser);
 
@@ -887,7 +873,7 @@ mod tests {
             let lexer = Lexer::new(test.0);
             let mut parser = Parser::new(lexer);
 
-            let program = parser.parse_program().unwrap();
+            let program = parser.parse_program();
 
             check_parser_errors(&parser);
 
@@ -906,7 +892,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 
@@ -960,7 +946,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 
@@ -1018,7 +1004,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 
@@ -1089,7 +1075,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 
@@ -1187,7 +1173,7 @@ mod tests {
             let lexer = Lexer::new(test.0);
             let mut parser = Parser::new(lexer);
 
-            let program = parser.parse_program().unwrap();
+            let program = parser.parse_program();
 
             check_parser_errors(&parser);
 
@@ -1238,7 +1224,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 
@@ -1293,7 +1279,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 
@@ -1338,7 +1324,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 
@@ -1379,7 +1365,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 
@@ -1407,7 +1393,7 @@ mod tests {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 
@@ -1446,7 +1432,7 @@ mod tests {
 
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 
@@ -1472,7 +1458,7 @@ mod tests {
 
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         check_parser_errors(&parser);
 

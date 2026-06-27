@@ -30,7 +30,7 @@ pub fn start(stdin: Stdin, mut stdout: Stdout) -> std::io::Result<()> {
 
         let lexer: Lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().expect("Failed to parse program");
+        let program = parser.parse_program();
 
         if !parser.errors().is_empty() {
             print_parse_errors(&stdout, parser.errors())?;

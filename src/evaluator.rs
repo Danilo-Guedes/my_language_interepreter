@@ -848,7 +848,7 @@ mod test {
     fn test_eval(input: &str) -> Object {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
-        let program = parser.parse_program().expect("Failed to parse program");
+        let program = parser.parse_program();
 
         let mut evaluator = Evaluator::new();
         evaluator.eval_program(program)
